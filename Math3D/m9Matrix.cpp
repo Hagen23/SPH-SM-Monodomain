@@ -55,7 +55,7 @@ void m9Matrix::eigenDecomposition(m9Matrix &A, m9Matrix &R)
 	while (iter < JACOBI_ITERATIONS)
 	{	// 10 off diagonal elements
 		// find off diagonal element with maximum modulus
-		int p, q;
+		int p = 0, q = 0;
 		float a, max;
 		max = -1.0f;
 		for (int i = 0; i < 8; i++) {

@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -std=c++11 -Wall
+CFLAGS = -std=c++11 -Wall -Ofast
 MATH3D = Math3D/
 INCLUDES = -I Math3D/ -I SPH_SM_monodomain/
 LDFLAGS = -lGL -lglut -lGLU

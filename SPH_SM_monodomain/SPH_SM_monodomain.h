@@ -90,6 +90,7 @@ class SPH_SM_monodomain
 		~SPH_SM_monodomain();
 
 		m3Real voltage_constant = 50;
+		m3Real max_pressure = 50000;
 
 		// Variables to meassure time spent in each step
 		tpoint t_start_find_neighbors, t_start_corrected_velocity, t_start_intermediate_velocity, t_start_Density_SingPressure, t_start_cell_model, t_start_compute_Force, t_start_Update_Properties;
@@ -127,7 +128,8 @@ class SPH_SM_monodomain
 		/// Monodomain methods
 		void calculate_cell_model();											// Updates the ionic current and recovery variable with the cell model
 		void set_stim(m3Vector center, m3Real radius, m3Real stim_strength);	// Turns the stimulation on at point center, around a given radius
-		void turnOnStim(std::vector<m3Vector> positions);
+		void turnOnStim_Cube(std::vector<m3Vector> positions);
+		void turnOnStim_Mesh(std::vector<m3Vector> positions);
 		void turnOffStim();					// Turns the stimulation off for all particles
 
 		/// Applies external forces for F-adv, including gravity

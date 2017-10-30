@@ -13,6 +13,7 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #include <cmath>
 #include <ctime>
 #include <iostream>
+#include <stdio.h>
 
 #include <SPH_SM_monodomain.h>
 
@@ -43,18 +44,18 @@ struct color{
 int mouse_old_x, mouse_old_y;
 int mouse_buttons = 0;
 float rotate_x = 0.0, rotate_y = 0.0;
-float translate_z = -3.0;
+float translate_z = -5.0;
 
 bool keypressed = false, simulate = true;
 
 float cubeFaces[24][3] = 
 {
-	{0.0,0.0,0.0}, {1.0,0.0,0.0}, {1.0,1.0,0.0}, {0.0,1.0,0.0},
-	{0.0,0.0,0.0}, {1.0,0.0,0.0}, {1.0,0,1.0}, {0.0,0,1.0},
-	{0.0,0.0,0.0}, {0,1.0,0.0}, {0,1.0,1.0}, {0.0,0,1.0},
-	{0.0,1.0,0.0}, {1.0,1.0,0.0}, {1.0,1.0,1.0}, {0.0,1.0,1.0},
-	{1.0,0.0,0.0}, {1.0,1.0,0.0}, {1.0,1.0,1.0}, {1.0,0.0,1.0},
-	{0.0,0.0,1.0}, {0,1.0,1.0}, {1.0,1.0,1.0}, {1.0,0,1.0}
+	{0.0,0.0,0.0}, {1.5,0.0,0.0}, {1.5,1.5,0.0}, {0.0,1.5,0.0},
+	{0.0,0.0,0.0}, {1.5,0.0,0.0}, {1.5,0,1.5}, {0.0,0,1.5},
+	{0.0,0.0,0.0}, {0,1.5,0.0}, {0,1.5,1.5}, {0.0,0,1.5},
+	{0.0,1.5,0.0}, {1.5,1.5,0.0}, {1.5,1.5,1.5}, {0.0,1.5,1.5},
+	{1.5,0.0,0.0}, {1.5,1.5,0.0}, {1.5,1.5,1.5}, {1.5,0.0,1.5},
+	{0.0,0.0,1.5}, {0,1.5,1.5}, {1.5,1.5,1.5}, {1.5,0,1.5}
 };
 
 SPH_SM_monodomain *sph;
@@ -68,7 +69,7 @@ float fps = 0;
 int total_fps_counts = 0;
 int currentTime = 0, previousTime = 0;
 
-const int max_time_steps = 500;
+const int max_time_steps = 5000;
 int time_steps = max_time_steps;
 bool simulation_active = true;
 duration_d average_step_duration;
@@ -125,6 +126,25 @@ color set_color(float value, float min, float max)
 		return_color.b = 0.0f;
 	}
 	return return_color;
+}
+
+void readCloudFromFile(const char* filename, vector<m3Vector>* points)
+{
+	FILE *ifp;
+	float x, y, z;
+	int aux = 0;
+
+	if ((ifp = fopen(filename, "r")) == NULL)
+	{
+		fprintf(stderr, "Can't open input file!\n");
+		return;
+	}
+
+	while ((aux = fscanf(ifp, "%f,%f,%f\n", &x, &y, &z)) != EOF)
+	{
+		if (aux == 3)
+			points->push_back(m3Vector(x,y,z));
+	}
 }
 
 void display_cube()
@@ -203,7 +223,7 @@ void idle(void)
 		tstart = std::chrono::system_clock::now();
 		// cout << "Time Step: " << max_time_steps - time_steps << endl;
 
-		if(time_steps == max_time_steps - 150)
+		if(time_steps == max_time_steps - max_time_steps / 2)
 		{
 			sph->turnOffStim();
 			cout << "Turning simulation off" << endl;
@@ -284,7 +304,7 @@ void reshape (int w, int h)
 	
 	gluPerspective (45, w*1.0/h*1.0, 0.01, 400);
 	glMatrixMode (GL_MODELVIEW);
-	glLoadIdentity ();
+	// glLoadIdentity ();
 }
 
 void initGL ()
@@ -302,12 +322,12 @@ void initGL ()
 	printf("GLSL version supported %s\n", glslVersion);
 
 	glEnable(GL_DEPTH_TEST);
+
+	gluLookAt(0.75, 0.75, -translate_z,0.75, 0.75, 0.75, 0, 1, 0);
 }
 
-void init(void)
+void init_cube()
 {
-	sph = new SPH_SM_monodomain();
-
 	std::vector<m3Vector> positions;
 	m3Vector World_Size = m3Vector(1.0f, 1.0f, 1.0f);
 	float kernel = 0.04f;
@@ -318,7 +338,22 @@ void init(void)
 		positions.push_back(m3Vector(i, j, k));
 
 	sph->Init_Fluid(positions);
-	sph->turnOnStim(positions);
+	sph->turnOnStim_Cube(positions);
+}
+
+void init_mesh(const char * filename)
+{
+	std::vector<m3Vector> positions;
+	readCloudFromFile(filename, &positions);
+	sph->Init_Fluid(positions);
+	sph->turnOnStim_Mesh(positions);
+}
+
+void init(void)
+{
+	sph = new SPH_SM_monodomain();
+	// init_cube();
+	init_mesh("Resources/biceps_simple_out.csv");
 }
 
 int main( int argc, const char **argv ) {
