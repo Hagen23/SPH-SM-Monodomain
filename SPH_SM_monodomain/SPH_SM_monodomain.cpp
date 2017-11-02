@@ -599,10 +599,10 @@ void SPH_SM_monodomain::Update_Properties()
 		}
 
 		p->Vm += p->Inter_Vm * Time_Delta / p->mass;
-		if(p->Vm > 1300.0f)
-			p->Vm = 1300.0f;
-		else if(p->Vm < -1300.0f)
-			p->Vm = -1300.0f;
+		if(p->Vm > max_voltage)
+			p->Vm = max_voltage;
+		else if(p->Vm < -max_voltage)
+			p->Vm = -max_voltage;
 
 		if(p->pos.x < 0.0f)
 		{
@@ -765,9 +765,9 @@ void SPH_SM_monodomain::turnOffStim()
 
 void SPH_SM_monodomain::print_report(double avg_fps, double avg_step_d)
 {
-	cout << "Avg FPS ; Avg Step Duration ; Time Steps ; Find neighbors ; Corrected Velocity ; Intermediate Velocity ; Density-Pressure ; Cell model ; ForcesK ; Alpha ; Beta ; Mu ; sigma ; Stim strength ; FH_VT ; FH_VP ; FH_VR ; C1 ; C2 ; C3 ; C4" << endl;
+	cout << "Avg FPS ; Avg Step Duration ; Time Steps ; Find neighbors ; Corrected Velocity ; Intermediate Velocity ; Density-Pressure ; Cell model ; Compute Force ; Update Properties ; K ; Alpha ; Beta ; Mu ; sigma ; Stim strength ; FH_VT ; FH_VP ; FH_VR ; C1 ; C2 ; C3 ; C4" << endl;
 	
-	cout << avg_fps << ";" << avg_step_d << ";" << total_time_steps << ";" << d_find_neighbors.count() / total_time_steps << ";" << d_corrected_velocity.count() / total_time_steps << ";" << d_intermediate_velocity.count() / total_time_steps << ";" << d_Density_SingPressure.count() / total_time_steps << ";" << d_cell_model.count() / total_time_steps << ";" << d_compute_Force.count() / total_time_steps;
+	cout << avg_fps << ";" << avg_step_d << ";" << total_time_steps << ";" << d_find_neighbors.count() / total_time_steps << ";" << d_corrected_velocity.count() / total_time_steps << ";" << d_intermediate_velocity.count() / total_time_steps << ";" << d_Density_SingPressure.count() / total_time_steps << ";" << d_cell_model.count() / total_time_steps << ";" << d_compute_Force.count() / total_time_steps << ";" << d_Update_Properties.count() / total_time_steps << ";";
 
 	cout << K << ";" << alpha << ";" << beta  << ";" << mu << ";" << sigma << ";" << stim_strength << ";" << FH_Vt << ";" << FH_Vp << ";" << FH_Vr << ";" << C1 << ";" << C2 << ";" << C3 << ";" << C4 << endl;
 }

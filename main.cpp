@@ -69,11 +69,13 @@ float fps = 0;
 int total_fps_counts = 0;
 int currentTime = 0, previousTime = 0;
 
-const int max_time_steps = 5000;
+const int max_time_steps = 2000;
 int time_steps = max_time_steps;
 bool simulation_active = true;
 duration_d average_step_duration;
 tpoint tstart;
+
+void exit_simulation();
 
 void calculateFPS()
 {
@@ -172,7 +174,7 @@ void display_points()
 		glBegin(GL_POINTS);
 		for(int i=0; i<sph->Get_Particle_Number(); i++)
 		{
-			color Voltage_color = set_color(p[i].Vm * sph ->voltage_constant, 0.0f, 1300.0f);
+			color Voltage_color = set_color(p[i].Vm * sph ->voltage_constant, -200.0f, sph->max_voltage);
 			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
 			glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
 		}
@@ -223,10 +225,10 @@ void idle(void)
 		tstart = std::chrono::system_clock::now();
 		// cout << "Time Step: " << max_time_steps - time_steps << endl;
 
-		if(time_steps == max_time_steps - max_time_steps / 2)
+		if(time_steps == max_time_steps - max_time_steps / 5)
 		{
 			sph->turnOffStim();
-			cout << "Turning simulation off" << endl;
+			cout << "Turning stimulation off" << endl;
 		}
 
 		if(simulate)
@@ -240,6 +242,8 @@ void idle(void)
 	{
 		simulation_active = false;		
 		cout << "Simulation end. Avg step duration: " << average_step_duration.count() / max_time_steps << endl;
+
+		exit_simulation();
 	}
 
 	glutPostRedisplay();
@@ -274,16 +278,21 @@ void motion(int x, int y)
     mouse_old_y = y;
 }
 
+void exit_simulation()
+{
+	sph->print_report(average_fps / total_fps_counts, average_step_duration.count() / (max_time_steps - time_steps));
+	cout << "Average FPS: " << average_fps / total_fps_counts<< endl;
+	if(simulation_active)
+		cout << "Simulation stopped. Avg step duration: " << average_step_duration.count() / (max_time_steps - time_steps) << endl;
+	delete sph;
+	exit(0);
+}
+
 void keys (unsigned char key, int x, int y)
 {
 	switch (key) {
 		case 27:
-			sph->print_report(average_fps / total_fps_counts, average_step_duration.count() / (max_time_steps - time_steps));
-			cout << "Average FPS: " << average_fps / total_fps_counts<< endl;
-			if(simulation_active)
-				cout << "Simulation stopped. Avg step duration: " << average_step_duration.count() / (max_time_steps - time_steps) << endl;
-			delete sph;
-            exit(0);
+			exit_simulation();
 			break;
 		case 'q':
 			sph->turnOffStim();

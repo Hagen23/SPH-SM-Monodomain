@@ -90,7 +90,8 @@ class SPH_SM_monodomain
 		~SPH_SM_monodomain();
 
 		m3Real voltage_constant = 50;
-		m3Real max_pressure = 50000;
+		m3Real max_pressure = 100000;
+		m3Real max_voltage = 500;
 
 		// Variables to meassure time spent in each step
 		tpoint t_start_find_neighbors, t_start_corrected_velocity, t_start_intermediate_velocity, t_start_Density_SingPressure, t_start_cell_model, t_start_compute_Force, t_start_Update_Properties;
@@ -122,7 +123,10 @@ class SPH_SM_monodomain
 		/// Calculates the predicted velocity, and the corrected velocity using SM, in order to
 		/// obtain the intermediate velocity that is input to SPH. Taken from 2014 - A velocity correcting method
 		/// for volume preserving viscoelastic fluids
-		void calculate_velocity_correction();
+		void calculate_corrected_velocity();
+		/// Applies external forces for F-adv, including gravity
+		void apply_external_forces(m3Vector* forcesArray, int* indexArray, int size);
+		/// Obtains the corrected velocity of the particles using Shape Matching
 		void projectPositions();
 
 		/// Monodomain methods
@@ -132,12 +136,8 @@ class SPH_SM_monodomain
 		void turnOnStim_Mesh(std::vector<m3Vector> positions);
 		void turnOffStim();					// Turns the stimulation off for all particles
 
-		/// Applies external forces for F-adv, including gravity
-		void apply_external_forces(m3Vector* forcesArray, int* indexArray, int size);
-
-		void calculate_corrected_velocity();
+		/// SPH Methods
 		void calculate_intermediate_velocity();
-
 		void Compute_Density_SingPressure();
 		void Compute_Force();						// Calculates forces for SPH, voltage for monodomain
 		void Update_Properties();					// Updates Position and velocity for SPH, voltage for monodomain
