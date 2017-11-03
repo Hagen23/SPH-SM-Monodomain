@@ -3,6 +3,6 @@
 #define MATH3D_H
 
 #include <cstdlib>
-#include "m3Vector.h"
+#include "m3Vector.cuh"
 
 #endif

@@ -1,4 +1,4 @@
-#include "m9Matrix.h"
+#include "m9Matrix.cuh"
 
 // --------------------------------------------------
 
@@ -7,7 +7,7 @@
 
 
 //---------------------------------------------------------------------
-void m9Matrix::jacobiRotate(m9Matrix &A, m9Matrix &R, int p, int q)
+__host__ __device__ void m9Matrix::jacobiRotate(m9Matrix &A, m9Matrix &R, int p, int q)
 //---------------------------------------------------------------------
 {
 	// rotates A through phi in pq-plane to set A(p,q) = 0
@@ -44,7 +44,7 @@ void m9Matrix::jacobiRotate(m9Matrix &A, m9Matrix &R, int p, int q)
 
 
 //---------------------------------------------------------------------
-void m9Matrix::eigenDecomposition(m9Matrix &A, m9Matrix &R)
+__host__ __device__ void m9Matrix::eigenDecomposition(m9Matrix &A, m9Matrix &R)
 //---------------------------------------------------------------------
 {
 	// only for symmetric matrices!
@@ -77,7 +77,7 @@ void m9Matrix::eigenDecomposition(m9Matrix &A, m9Matrix &R)
 
 
 //----------------------------------------------------------------------------
-void m9Matrix::invert()
+__host__ __device__ void m9Matrix::invert()
 //----------------------------------------------------------------------------
 {
 	m9Matrix R, A = *this;

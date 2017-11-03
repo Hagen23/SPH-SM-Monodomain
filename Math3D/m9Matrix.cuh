@@ -2,15 +2,15 @@
 #define M5_MATRIX_H
 //---------------------------------------------------------------------------
 
-#include "math3d.h"
+#include "math3d.cuh"
 
 //---------------------------------------------------------------------------
 class m9Matrix {
 	//---------------------------------------------------------------------------
 public:
-	m9Matrix() {}
-	m9Matrix(const m9Matrix &m) { *this = m; }
-	m3Real & operator()(int i, int j) {
+	__host__ __device__ m9Matrix() {}
+	__host__ __device__ m9Matrix(const m9Matrix &m) { *this = m; }
+	__host__ __device__ m3Real & operator()(int i, int j) {
 		assert(i >= 0 && i < 9);
 		assert(j >= 0 && i < 9);
 		//return rc[i][j];
@@ -22,7 +22,7 @@ public:
 		//return rc[i][j];
 		return (&r00)[i * 9 + j];
 	}
-	void zero() 
+	__host__ __device__ void zero() 
 	{
 		r00 = 0.0; r01 = 0.0; r02 = 0.0; r03 = 0.0; r04 = 0.0; r05 = 0.0; r06 = 0.0; r07 = 0.0; r08 = 0.0;
 		r10 = 0.0; r11 = 0.0; r12 = 0.0; r13 = 0.0; r14 = 0.0; r15 = 0.0; r16 = 0.0; r17 = 0.0; r18 = 0.0;
@@ -34,7 +34,7 @@ public:
 		r70 = 0.0; r71 = 0.0; r72 = 0.0; r73 = 0.0; r74 = 0.0; r75 = 0.0; r76 = 0.0; r77 = 0.0; r78 = 0.0;
 		r80 = 0.0; r81 = 0.0; r82 = 0.0; r83 = 0.0; r84 = 0.0; r85 = 0.0; r86 = 0.0; r87 = 0.0; r88 = 0.0;
 	}
-	void id() 
+	__host__ __device__ void id() 
 	{
 		r00 = 1.0; r01 = 0.0; r02 = 0.0; r03 = 0.0; r04 = 0.0; r05 = 0.0; r06 = 0.0; r07 = 0.0; r08 = 0.0;
 		r10 = 0.0; r11 = 1.0; r12 = 0.0; r13 = 0.0; r14 = 0.0; r15 = 0.0; r16 = 0.0; r17 = 0.0; r18 = 0.0;
@@ -46,9 +46,9 @@ public:
 		r70 = 0.0; r71 = 0.0; r72 = 0.0; r73 = 0.0; r74 = 0.0; r75 = 0.0; r76 = 0.0; r77 = 1.0; r78 = 0.0;
 		r80 = 0.0; r81 = 0.0; r82 = 0.0; r83 = 0.0; r84 = 0.0; r85 = 0.0; r86 = 0.0; r87 = 0.0; r88 = 1.0;
 	}
-	static void jacobiRotate(m9Matrix &A, m9Matrix &R, int p, int q);
-	static void eigenDecomposition(m9Matrix &A, m9Matrix &R);
-	void invert();
+	__host__ __device__ static void jacobiRotate(m9Matrix &A, m9Matrix &R, int p, int q);
+	__host__ __device__ static void eigenDecomposition(m9Matrix &A, m9Matrix &R);
+	__host__ __device__ void invert();
 
 	// --------------------------------------------------
 

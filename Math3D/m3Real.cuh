@@ -18,7 +18,7 @@ typedef float m3Real;
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Clamp(m3Real &r, m3Real min, m3Real max)
+__host__ __device__ inline m3Real m2Clamp(m3Real &r, m3Real min, m3Real max)
 {
 	if (r < min) return min;
 	else if (r > max) return max;
@@ -27,7 +27,7 @@ inline m3Real m2Clamp(m3Real &r, m3Real min, m3Real max)
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Min(m3Real r1, m3Real r2)
+__host__ __device__ inline m3Real m2Min(m3Real r1, m3Real r2)
 {
 	if (r1 <= r2) return r1;
 	else return r2;
@@ -35,7 +35,7 @@ inline m3Real m2Min(m3Real r1, m3Real r2)
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Max(m3Real r1, m3Real r2)
+__host__ __device__ inline m3Real m2Max(m3Real r1, m3Real r2)
 {
 	if (r1 >= r2) return r1;
 	else return r2;
@@ -43,7 +43,7 @@ inline m3Real m2Max(m3Real r1, m3Real r2)
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Abs(m3Real r)
+__host__ __device__ inline m3Real m2Abs(m3Real r)
 {
 	if (r < 0.0f) return -r;
 	else return r;
@@ -51,14 +51,14 @@ inline m3Real m2Abs(m3Real r)
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Random(m3Real min, m3Real max)
+__host__ __device__ inline m3Real m2Random(m3Real min, m3Real max)
 {
 	return min + ((m3Real)rand() / RAND_MAX) * (max - min);
 }
 
 //---------------------------------------------------------------------------
 
-inline m3Real m2Acos(m3Real r)
+__host__ __device__ inline m3Real m2Acos(m3Real r)
 {
 	// result is between 0 and pi
 	if (r < -1.0f) r = -1.0f;

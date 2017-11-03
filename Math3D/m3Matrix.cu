@@ -1,6 +1,6 @@
-#include "m3Matrix.h"
+#include "m3Matrix.cuh"
 
-void m3Matrix::jacobiRotate(m3Matrix& A, m3Matrix& R, int p, int q)
+__host__ __device__ void m3Matrix::jacobiRotate(m3Matrix& A, m3Matrix& R, int p, int q)
 {
 	// rotates A through phi in pq-plane to set A(p,q) = 0
 	// rotation stored in R whose columns are eigenvectors of A
@@ -35,7 +35,7 @@ void m3Matrix::jacobiRotate(m3Matrix& A, m3Matrix& R, int p, int q)
 }
 
 //---------------------------------------------------------------------
-void m3Matrix::eigenDecomposition(m3Matrix &A, m3Matrix &R)
+__host__ __device__ void m3Matrix::eigenDecomposition(m3Matrix &A, m3Matrix &R)
 //---------------------------------------------------------------------
 {
 	// only for symmetric matrices!
@@ -70,7 +70,7 @@ void m3Matrix::eigenDecomposition(m3Matrix &A, m3Matrix &R)
 }
 
 // --------------------------------------------------
-void m3Matrix::polarDecomposition(const m3Matrix &A, m3Matrix &R, m3Matrix &S)
+__host__ __device__ void m3Matrix::polarDecomposition(const m3Matrix &A, m3Matrix &R, m3Matrix &S)
 {
 	// A = RS, where S is symmetric and R is orthonormal
 	// -> S = (A^T A)^(1/2)

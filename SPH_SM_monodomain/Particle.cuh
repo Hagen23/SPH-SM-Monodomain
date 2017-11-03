@@ -1,7 +1,7 @@
 #ifndef __PARTICLE_H__
 #define __PARTICLE_H__
 
-#include <m3Vector.h>
+#include <m3Vector.cuh>
 #include <vector>
 
 class Particle

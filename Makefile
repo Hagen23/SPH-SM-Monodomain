@@ -1,7 +1,9 @@
-CC = g++
-CFLAGS = -std=c++11 -Wall -Ofast
+.SUFFIXES: .cpp .cu
+
+CC = nvcc
+CFLAGS = -std=c++11 -O3 -Xcompiler -ansi -Xcompiler -Ofast -Wno-deprecated-gpu-targets
 MATH3D = Math3D/
-INCLUDES = -I Math3D/ -I SPH_SM_monodomain/
+INCLUDES = -I Math3D/ -I SPH_SM_monodomain/ -I $CUDA_HOME/include/ -I cuda_common/
 LDFLAGS = -lGL -lglut -lGLU
 DEBUGF = $(CFLAGS) -ggdb
 SOURCES = *.cpp Math3D/*.cpp SPH_SM_monodomain/*.cpp
