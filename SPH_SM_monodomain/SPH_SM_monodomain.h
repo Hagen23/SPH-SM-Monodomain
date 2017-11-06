@@ -33,22 +33,6 @@ This class implements the SPH [5] and SM [2] algorithms with the needed modifica
 typedef std::chrono::system_clock::time_point 	tpoint;
 typedef std::chrono::duration<double> 			duration_d;
 
-extern "C"
-{
-	//Round a / b to nearest higher integer value
-	uint iDivUp(uint a, uint b)
-	{
-		return (a % b != 0) ? (a / b + 1) : (a / b);
-	}
-
-	// compute grid and thread block size for a given number of elements
-	void computeGridSize(uint n, uint blockSize, uint &numBlocks, uint &numThreads)
-	{
-		numThreads = min(blockSize, n);
-		numBlocks = iDivUp(n, numThreads);
-	}
-}
-
 class SPH_SM_monodomain
 {
 	private:
@@ -178,6 +162,18 @@ class SPH_SM_monodomain
 
 		inline bool flip_quadratic()	{ quadraticMatch = !quadraticMatch; return quadraticMatch; }
 		inline bool flip_volume()		{ volumeConservation = !volumeConservation; return volumeConservation; }
+
+		uint iDivUp(uint a, uint b)
+		{
+			return (a % b != 0) ? (a / b + 1) : (a / b);
+		}
+
+		// compute grid and thread block size for a given number of elements
+		void computeGridSize(uint n, uint blockSize, uint &numBlocks, uint &numThreads)
+		{
+			numThreads = min(blockSize, n);
+			numBlocks = iDivUp(n, numThreads);
+		}
 };
 
 

@@ -36,9 +36,6 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 
 using namespace std;
 
-extern "C" uint iDivUp(uint a, uint b);
-extern "C" void computeGridSize(uint n, uint blockSize, uint &numBlocks, uint &numThreads);
-
 struct color{
 	float r, g, b;
 };
