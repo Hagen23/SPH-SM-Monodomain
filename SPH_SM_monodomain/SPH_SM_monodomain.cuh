@@ -8,17 +8,19 @@ This class implements the SPH [5] and SM [2] algorithms with the needed modifica
 #ifndef __SPH_SM_monodomain_H__
 #define __SPH_SM_monodomain_H__
 
-#include <m3Vector.h>
-#include <m3Bounds.h>
-#include <m3Real.h>
-#include <m3Matrix.h>
-#include <m9Matrix.h>
+#include <m3Vector.cuh>
+#include <m3Bounds.cuh>
+#include <m3Real.cuh>
+#include <m3Matrix.cuh>
+#include <m9Matrix.cuh>
 
-#include <Particle.h>
+#include <Particle.cuh>
 
 #include <vector>
 #include <map>
 #include <chrono>
+
+#include <helper_cuda.h>
 
 #define PI 3.141592f
 #define INF 1E-12f
@@ -26,10 +28,33 @@ This class implements the SPH [5] and SM [2] algorithms with the needed modifica
 typedef std::chrono::system_clock::time_point 	tpoint;
 typedef std::chrono::duration<double> 			duration_d;
 
+//Round a / b to nearest higher integer value
+uint iDivUp(uint a, uint b)
+{
+	return (a % b != 0) ? (a / b + 1) : (a / b);
+}
+
+// compute grid and thread block size for a given number of elements
+void computeGridSize(uint n, uint blockSize, uint &numBlocks, uint &numThreads)
+{
+	numThreads = min(blockSize, n);
+	numBlocks = iDivUp(n, numThreads);
+}
+
 class SPH_SM_monodomain
 {
 	private:
 	
+		Particles 	*particles;
+
+		// grid data for sorting method
+        uint  *dGridParticleHash; 		// grid hash value for each particle
+        uint  *dGridParticleIndex;		// particle index for each particle
+        uint  *dCellStart;        		// index of start of each cell in sorted list
+        uint  *dCellEnd;          		// index of end of cell
+
+		/// Particle system parameters
+
 		m3Real 		kernel;					// kernel or h in kernel function
 		int 		Max_Number_Paticles;	// initial array for particles
 		int 		Number_Particles;		// paticle number
@@ -82,9 +107,6 @@ class SPH_SM_monodomain
 		// Max velocity allowed for a particle.
 		m3Vector 	max_vel = m3Vector(INF, INF, INF);	
 
-		Particle*	Particles;
-		Cell*		Cells;
-
 	public:
 		SPH_SM_monodomain();
 		~SPH_SM_monodomain();
@@ -101,36 +123,53 @@ class SPH_SM_monodomain
 		int total_time_steps;
 
 		void Init_Fluid(std::vector<m3Vector> positions);	// initialize fluid
-		void Init_Particle(m3Vector pos, m3Vector vel);		// initialize particle system
-		m3Vector Calculate_Cell_Position(m3Vector pos);		// get cell position
-		int Calculate_Cell_Hash(m3Vector pos);				// get cell hash number
+		// void Init_Particle(m3Vector pos, m3Vector vel);		// initialize particle system
+		
+		__device__ m3Vector Calculate_Cell_Position(m3Vector pos);		// get cell position
+		__device__ int Calculate_Cell_Hash(m3Vector pos);				// get cell hash number
 		void print_report(double avg_fps = 0.0f, double avg_step_d = 0.0f);
 		void add_viscosity(float value);
 
 		// Kernel function
-		m3Real Poly6(m3Real r2);							// for density
-		m3Real Spiky(m3Real r);								// for pressure
-		m3Real Visco(m3Real);								// for viscosity
+		__device__ m3Real Poly6(m3Real r2);							// for density
+		__device__ m3Real Spiky(m3Real r);								// for pressure
+		__device__ m3Real Visco(m3Real);								// for viscosity
 
-		m3Real B_spline(m3Real r);							// B-spline kernel function
-		m3Real B_spline_1(m3Real r);						// B-spline kernel first derivative
-		m3Real B_spline_2(m3Real r);						// B-spline kernel second derivative 
+		__device__ m3Real B_spline(m3Real r);							// B-spline kernel function
+		__device__ m3Real B_spline_1(m3Real r);						// B-spline kernel first derivative
+		__device__ m3Real B_spline_2(m3Real r);						// B-spline kernel second derivative 
 
 		/// Hashed the particles into a grid
+		void calcHash(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles);
+		
+		void calcHashD(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles);
+		
+		void sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, uint numParticles);
+    	
+		void reorderDataAndFindCellStartD(Particles *p, 
+								uint   *cellStart,        // output: cell start index
+								uint   *cellEnd,          // output: cell end index
+								uint   *gridParticleHash, // input: sorted grid hashes
+								uint   *gridParticleIndex,// input: sorted particle indices
+								uint    numParticles);
+
+		void reorderDataAndFindCellStart(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells);
+
 		void Find_neighbors();
 
-		/// SPH SM methods
+		/// SM methods
 		/// Calculates the predicted velocity, and the corrected velocity using SM, in order to
 		/// obtain the intermediate velocity that is input to SPH. Taken from 2014 - A velocity correcting method
 		/// for volume preserving viscoelastic fluids
-		void calculate_corrected_velocity();
+		void calculate_corrected_velocityD(Particles *particles);
+		void calculate_corrected_velocity(Particles *particles);
 		/// Applies external forces for F-adv, including gravity
 		void apply_external_forces(m3Vector* forcesArray, int* indexArray, int size);
 		/// Obtains the corrected velocity of the particles using Shape Matching
-		void projectPositions();
+		void projectPositionsD();
 
 		/// Monodomain methods
-		void calculate_cell_model();											// Updates the ionic current and recovery variable with the cell model
+		void calculate_cell_model(Particles *particles);											// Updates the ionic current and recovery variable with the cell model
 		void set_stim(m3Vector center, m3Real radius, m3Real stim_strength);	// Turns the stimulation on at point center, around a given radius
 		void turnOnStim_Cube(std::vector<m3Vector> positions);
 		void turnOnStim_Mesh(std::vector<m3Vector> positions);
@@ -138,18 +177,20 @@ class SPH_SM_monodomain
 
 		/// SPH Methods
 		void calculate_intermediate_velocity();
+		void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);
+		void cell_Density_SingPressure();
 		void Compute_Density_SingPressure();
-		void Compute_Force();						// Calculates forces for SPH, voltage for monodomain
-		void Update_Properties();					// Updates Position and velocity for SPH, voltage for monodomain
+		void Compute_Force();	
+		void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);						// Calculates forces for SPH, voltage for monodomain
+		void Update_Properties(Particles *particles);					// Updates Position and velocity for SPH, voltage for monodomain
 
 		void compute_SPH_SM_monodomain();
 		void Animation();
 
 		inline int Get_Particle_Number() { return Number_Particles; }
 		inline m3Vector Get_World_Size() { return World_Size; }
-		inline Particle* Get_Paticles()	 { return Particles; }
-		inline Cell* Get_Cells()		 { return Cells; }
-		inline m3Real Get_stand_dens()		{ return Stand_Density;}		 
+		inline Particles* Get_Paticles() { return particles; }
+		inline m3Real Get_stand_dens()	 { return Stand_Density;}		 
 
 		inline bool flip_quadratic()	{ quadraticMatch = !quadraticMatch; return quadraticMatch; }
 		inline bool flip_volume()		{ volumeConservation = !volumeConservation; return volumeConservation; }

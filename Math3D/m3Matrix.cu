@@ -43,7 +43,7 @@ __host__ __device__ void m3Matrix::eigenDecomposition(m3Matrix &A, m3Matrix &R)
 
 	R.id();	// unit matrix
 	int iter = 0;
-	while (iter < JACOBI_ITERATIONS) 
+	while (iter < jacobi_iterations) 
 	{	// 10 off diagonal elements
 		// find off diagonal element with maximum modulus
 		int p, q;

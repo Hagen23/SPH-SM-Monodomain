@@ -19,54 +19,54 @@ public:
 	__host__ __device__ inline void zero() { x = 0.0; y = 0.0; z = 0.0; }
 	__host__ __device__ inline bool isZero() { return x == 0.0 && y == 0.0 && z == 0.0; }
 
-	m3Real & operator[] (int i) {
+	__host__ __device__ m3Real & operator[] (int i) {
 		assert(i >= 0 && i <= 2);
 		return (&x)[i];
 	}
 
-	m3Vector& operator = (m3Vector rhs)
+	__host__ __device__ m3Vector& operator = (m3Vector rhs)
 	{
 		x = rhs.x; y = rhs.y; z = rhs.z;
 		return *this;
 	}
 
-	bool operator == (const m3Vector &v) const {
+	__host__ __device__ bool operator == (const m3Vector &v) const {
 		return (x == v.x) && (y == v.y) && (z ==v.z);
 	}
 
-	m3Vector operator + (const m3Vector &v) const {
+	__host__ __device__ m3Vector operator + (const m3Vector &v) const {
 		m3Vector r; 
 		r.x = x + v.x; r.y = y + v.y; r.z = z + v.z;
 		return r;
 	}
 
-	m3Vector operator - (const m3Vector &v) const {
+	__host__ __device__ m3Vector operator - (const m3Vector &v) const {
 		m3Vector r; r.x = x - v.x; r.y = y - v.y; r.z = z - v.z;
 		return r;
 	}
-	void operator += (const m3Vector &v) {
+	__host__ __device__ void operator += (const m3Vector &v) {
 		x += v.x; y += v.y; z += v.z;
 	}
-	void operator -= (const m3Vector &v) {
+	__host__ __device__ void operator -= (const m3Vector &v) {
 		x -= v.x; y -= v.y; z -= v.z;
 	}
-	void operator *= (const m3Vector &v) {
+	__host__ __device__ void operator *= (const m3Vector &v) {
 		x *= v.x; y *= v.y; z *= v.z;
 	}
-	void operator /= (const m3Vector &v) {
+	__host__ __device__ void operator /= (const m3Vector &v) {
 		x /= v.x; y /= v.y; z /= v.z;
 	}
-	m3Vector operator -() const {
+	__host__ __device__ m3Vector operator -() const {
 		m3Vector r; 
 		r.x = -x; r.y = -y; r.z = -z;
 		return r;
 	}
-	m3Vector operator * (const m3Real f) const {
+	__host__ __device__ m3Vector operator * (const m3Real f) const {
 		m3Vector r; 
 		r.x = x*f; r.y = y*f; r.z = z*f;
 		return r;
 	}
-	m3Vector operator / (const m3Real f) const {
+	__host__ __device__ m3Vector operator / (const m3Real f) const {
 		m3Vector r;
 		r.x = x / f; r.y = y / f; r.z = z / f;
 		return r;
@@ -105,8 +105,8 @@ public:
 		return sqrt(dx*dx + dy*dy + dz*dz);
 	}
 
-	void operator *=(m3Real f) { x *= f; y *= f; z *= f; }
-	void operator /=(m3Real f) { x /= f; y /= f; z /= f; }
+	__host__ __device__ void operator *=(m3Real f) { x *= f; y *= f; z *= f; }
+	__host__ __device__ void operator /=(m3Real f) { x /= f; y /= f; z /= f; }
 
 	__host__ __device__ void normalize() 
 	{

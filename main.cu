@@ -15,7 +15,7 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #include <iostream>
 #include <stdio.h>
 
-#include <SPH_SM_monodomain.h>
+#include <SPH_SM_monodomain.cuh>
 
 #if defined(_WIN32) || defined(_WIN64)
 #  define WINDOWS_LEAN_AND_MEAN
@@ -167,16 +167,16 @@ void display_cube()
 void display_points()
 {
 	glPushMatrix();
-		Particle *p = sph->Get_Paticles();
+		Particles *p = sph->Get_Paticles();
 		glColor3f(0.2f, 0.5f, 1.0f);
 		glPointSize(2.0f);
 
 		glBegin(GL_POINTS);
 		for(int i=0; i<sph->Get_Particle_Number(); i++)
 		{
-			color Voltage_color = set_color(p[i].Vm * sph ->voltage_constant, -200.0f, sph->max_voltage);
+			color Voltage_color = set_color(p->Vm[i] * sph->voltage_constant, -200.0f, sph->max_voltage);
 			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
-			glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
+			glVertex3f(p->pos[i].x, p->pos[i].y, p->pos[i].z);
 		}
 		glEnd();
 	glPopMatrix();

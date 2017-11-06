@@ -2,14 +2,18 @@
 #define M2_MATRIX_H
 //---------------------------------------------------------------------------
 
-#include "math3d.h"
+#include "math3d.cuh"
 
-#define EPSILON 1e-8
-#define JACOBI_ITERATIONS 20
+// #define EPSILON 1e-8
+// #define JACOBI_ITERATIONS 20
 //---------------------------------------------------------------------------
 class m3Matrix {
 	//---------------------------------------------------------------------------
 public:
+
+	static constexpr float epsilon = 1e-8;
+	static constexpr int jacobi_iterations = 20;
+
 	__host__ __device__ m3Matrix() {}
 	__host__ __device__ m3Matrix(const m3Matrix &m) { *this = m; }
 
@@ -27,14 +31,14 @@ public:
 		r20 = c20; r21 = c21; r22 = c22;
 	}
 
-	m3Real & operator()(int i, int j) 
+	__host__ __device__ m3Real & operator()(int i, int j) 
 	{
 		assert(i >= 0 && i <= 2);
 		assert(j >= 0 && i <= 2);
 		return (&r00)[i * 3 + j];
 	}
 
-	const m3Real & operator()(int i, int j) const 
+	__host__ __device__ const m3Real & operator()(int i, int j) const 
 	{
 		assert(i >= 0 && i <= 2);
 		assert(j >= 0 && i <= 2);
