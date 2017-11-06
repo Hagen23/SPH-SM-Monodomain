@@ -21,9 +21,9 @@
 // Kernel function
 __device__ m3Real kernel = 0.035f;
 
-__device__ m3Real Poly6_constant = 315.0f/(64.0f * m3Pi * pow(kernel, 9));
-__device__ m3Real Spiky_constant = 45.0f/(m3Pi * pow(kernel, 6));
-__device__ m3Real B_spline_constant = 1.0f / (m3Pi*kernel*kernel*kernel);
+// __device__ m3Real Poly6_constant = 315.0f/(64.0f * m3Pi * pow(0.035f, 9));
+// __device__ m3Real Spiky_constant = 45.0f/(m3Pi * pow(0.035f, 6));
+// __device__ m3Real B_spline_constant = 1.0f / (m3Pi*0.035f*0.035f*0.035f);
 
 __device__ m3Real K = 0.8f;
 __device__ m3Real Stand_Density = 5000.0f;
@@ -32,34 +32,48 @@ __device__ m3Real voltage_constant = 50;
 __device__ m3Real max_pressure = 100000;
 __device__ m3Real max_voltage = 500;
 
-__device__ m3Vector max_vel = m3Vector(3.0f, 3.0f, 3.0f);
+// __device__ m3Vector max_vel = m3Vector(3.0f, 3.0f, 3.0f);
 __device__ m3Real velocity_mixing = 1.0f;
 
 /// Time step is calculated as in 2016 - Divergence-Free SPH for Incompressible and Viscous Fluids.
 /// Then we adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition [6] ∆t ≤ 0.4 * d / (||vmax||)
-__device__ m3Real Time_Delta = 0.4 * kernel / sqrt(max_vel.magnitudeSquared());
+// __device__ m3Real Time_Delta = 0.4 * kernel / sqrt(max_vel.magnitudeSquared());
 __device__ m3Real Wall_Hit = -0.05f;
 __device__ m3Real mu = 100.0f;
 
+__device__ m3Real Cm = 1.0;
+__device__ m3Real Beta = 140;
+__device__ m3Real sigma = 1.0f;
+__device__ m3Real stim_strength = 500000.0f;
+
+//membrane model parameters
+__device__ m3Real FH_Vt=-75.0;
+__device__ m3Real FH_Vp=15.0;
+__device__ m3Real FH_Vr=-85.0;
+__device__ m3Real C1 = 0.175;
+__device__ m3Real C2 = 0.03;
+__device__ m3Real C3 = 0.011;
+__device__ m3Real C4 = 0.55;
+
 /// For density computation
-__device__ float Poly6(float r2)
+__device__ float Poly6(m3Real Poly6_constant, float r2)
 {
 	return (r2 >= 0 && r2 <= kernel*kernel) ? Poly6_constant * pow(kernel * kernel - r2, 3) : 0;
 }
 
 /// For force of pressure computation
-__device__ float Spiky(float r)
+__device__ float Spiky(m3Real Spiky_constant, float r)
 {
 	return (r >= 0 && r <= kernel ) ? -Spiky_constant * (kernel - r) * (kernel - r) : 0;
 }
 
 /// For viscosity computation
-__device__ float Visco(float r)
+__device__ float Visco(m3Real Spiky_constant, float r)
 {
 	return (r >= 0 && r <= kernel ) ? Spiky_constant * (kernel - r) : 0;
 }
 
-__device__ m3Real B_spline(m3Real r)
+__device__ m3Real B_spline(m3Real B_spline_constant, m3Real r)
 {
 	m3Real q = r / kernel;
 
@@ -71,7 +85,7 @@ __device__ m3Real B_spline(m3Real r)
 		return 0;
 }
 
-__device__ m3Real B_spline_1(m3Real r)
+__device__ m3Real B_spline_1(m3Real B_spline_constant, m3Real r)
 {
 	m3Real q = r / kernel;
 	if (q >= 0 && q < 1)
@@ -82,7 +96,7 @@ __device__ m3Real B_spline_1(m3Real r)
 		return 0;
 }
 
-__device__ m3Real B_spline_2(m3Real r)
+__device__ m3Real B_spline_2(m3Real B_spline_constant, m3Real r)
 {
 	m3Real q = r / kernel;
 	if (q >= 0 && q < 1)
@@ -200,7 +214,7 @@ void reorderDataAndFindCellStartD(Particles *p, uint *cellStart, uint *cellEnd, 
 	}
 }
 
-__global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size)
+__global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -237,7 +251,7 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 						float dis2 = (float)Distance.magnitudeSquared();
 						// p->dens += np->mass * B_spline(Distance.magnitude());
 
-						particles->sorted_dens_d[index] += particles->sortedMass_d[j] * Poly6(dis2);
+						particles->sorted_dens_d[index] += particles->sortedMass_d[j] * Poly6(Poly6_constant, dis2);
 					}
 				}
 			}
@@ -245,7 +259,7 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 
 		}
 
-		particles->sorted_dens_d[index] += particles->sortedMass_d[index] * Poly6(0.0f);
+		particles->sorted_dens_d[index] += particles->sortedMass_d[index] * Poly6(Poly6_constant, 0.0f);
 
 		/// Calculates the pressure, Eq.12
 		particles->sorted_pres_d[index] = K * (particles->sorted_dens_d[index]  - Stand_Density);
@@ -259,7 +273,7 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 	// }
 }
 
-__global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size)
+__global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Spiky_constant, m3Real B_spline_constant, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -304,7 +318,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 							/// Calculates the force of pressure, Eq.10
 							float Volume = particles->sortedMass_d[j] / particles->sorted_dens_d[j];
 							// float Force_pressure = Volume * (p->pres+np->pres)/2 * B_spline_1(dis);
-							float Force_pressure = Volume * (particles->sorted_pres_d[index] + particles->sorted_pres_d[j])/2 * Spiky(dis);
+							float Force_pressure = Volume * (particles->sorted_pres_d[index] + particles->sorted_pres_d[j])/2 * Spiky(Spiky_constant, dis);
 
 							particles->sortedAcc_d[index] -= Distance * Force_pressure / dis;
 
@@ -312,16 +326,17 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 							// m3Vector RelativeVel = np->corrected_vel - p->corrected_vel;
 
 							m3Vector RelativeVel = particles->sorted_int_vel_d[j] - particles->sorted_int_vel_d[index];
-							float Force_viscosity = Volume * mu * Visco(dis);
+							float Force_viscosity = Volume * mu * Visco(Spiky_constant, dis);
 							particles->sortedAcc_d[index] += RelativeVel * Force_viscosity;
 
 							/// Calculates the intermediate voltage needed for the monodomain model
-							particles->sorted_int_vel_d[index] += (particles->sorted_Vm_d[j] - particles->sorted_Vm_d[index]) * Volume * B_spline_2(dis);
+							particles->sorted_Inter_Vm_d[index] += (particles->sorted_Vm_d[j] - particles->sorted_Vm_d[index]) * Volume * B_spline_2(B_spline_constant, dis);
 						}
 					}
 				}
 			}
 		}
+
 		/// Sum of the forces that make up the fluid, Eq.8
 
 		particles->sortedAcc_d[index] = particles->sortedAcc_d[index] / particles->sorted_dens_d[index];
@@ -329,7 +344,8 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 		/// Adding the currents, and time integration for the intermediate voltage
 		particles->sorted_Inter_Vm_d[index] += (sigma / (Beta*Cm)) + particles->sorted_Inter_Vm_d[index] - ((particles->sorted_Iion_d[index]- particles->sorted_stim_d[index] * Time_Delta / particles->sortedMass_d[index]) / Cm);
 
-		uint originalIndex = gridParticleIndex[index];
+		uint originalIndex = m_dGridParticleIndex[index];
+
 		particles->pos_d[originalIndex] = particles->sortedPos_d[index];
 		particles->vel_d[originalIndex] = particles->sortedVel_d[index];
 		particles->predicted_vel_d[originalIndex] = particles->sorted_pred_vel_d[index];
@@ -341,7 +357,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 		particles->mGoalPos_d[originalIndex] = particles->sorted_mGoalPos_d[index];
 		particles->mFixed_d[originalIndex] = particles->sorted_mFixed_d[index];
 		particles->dens_d[originalIndex] = particles->sorted_dens_d[index];
-		particles->pres_d[originalIndex] = particles->sortedpres_d[index];
+		particles->pres_d[originalIndex] = particles->sorted_pres_d[index];
 		particles->Vm_d[originalIndex] = particles->sorted_Vm_d[index];
 		particles->Inter_Vm_d[originalIndex] = particles->sorted_Inter_Vm_d[index];
 		particles->Iion_d[originalIndex] = particles->sorted_Iion_d[index];
@@ -350,7 +366,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 	// }
 }
 
-__global__ void calculate_cell_model(Particles *particles)
+__global__ void calculate_cell_model(Particles *particles, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -360,7 +376,7 @@ __global__ void calculate_cell_model(Particles *particles)
 
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
-		p = &Particles[k];
+		// p = &Particles[k];
 
 		u = (particles->Vm_d[index] - FH_Vr) / denom;
 
@@ -373,7 +389,7 @@ __global__ void calculate_cell_model(Particles *particles)
 
 /// Time integration as in 2016 - Fluid simulation by the SPH Method, a survey.
 /// Eq.13 and Eq.14
-__global__ void Update_Properties(Particles *particles)
+__global__ void Update_Properties(Particles *particles, m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -424,28 +440,11 @@ __global__ void Update_Properties(Particles *particles)
 			particles->pos_d[index].z = World_Size.z - 0.0001f;
 		}
 
-		bounds.clamp(particls->pos_d[index]);
-	}
-}
-
-__global__ void SPH_SM_monodomain::calculate_corrected_velocityD(Particles *particles)
-{
-	uint i = blockIdx.x * blockDim.x + threadIdx.x;
-	/// Computes predicted velocity from forces except viscoelastic and pressure
-	apply_external_forces();
-
-	/// Calculates corrected velocity
-	projectPositions();
-
-	m3Real time_delta_1 = 1.0f / Time_Delta;
-
-	// for (int i = 0; i < Number_Particles; i++)
-	// {
-		particles->corrected_vel_d[i] = particles->predicted_vel_d[i] + (particles->mGoalPos_d[i] - particles->pos_d[i]) * time_delta_1 * alpha;
+		bounds.clamp(particles->pos_d[index]);
 	// }
 }
 
-__global__ void calculate_intermediate_velocity()
+__global__ void calculate_intermediate_velocity(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -455,8 +454,8 @@ __global__ void calculate_intermediate_velocity()
 
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
-		p = &Particles[k];
-		CellPos = Calculate_Cell_Position(particles->sortedPos_d[index]);
+		// p = &Particles[k];
+		CellPos = Calculate_Cell_Position(particles->sortedPos_d[index], Cell_Size);
 		m3Vector partial_velocity(0.0f, 0.0f, 0.0f);
 
 		for(int k = -1; k <= 1; k++)
@@ -464,12 +463,13 @@ __global__ void calculate_intermediate_velocity()
 		for(int i = -1; i <= 1; i++)
 		{
 			NeighborPos = CellPos + m3Vector(i, j, k);
-			hash = Calculate_Cell_Hash(NeighborPos);
-			uint startIndex = cellStart[gridHash];
+			hash = Calculate_Cell_Hash(NeighborPos, Grid_Size);
+			
+			uint startIndex = m_dCellStart[hash];
 
 			if (startIndex != 0xffffffff)
 			{
-				uint endIndex = cellEnd[gridHash];
+				uint endIndex = m_dCellEnd[hash];
 
 				for(uint j = startIndex; j < endIndex; j++)
 				{
@@ -478,7 +478,7 @@ __global__ void calculate_intermediate_velocity()
 						m3Vector Distance;
 						Distance = particles->sortedPos_d[index] - particles->sortedPos_d[j];
 						float dis2 = (float)Distance.magnitudeSquared();
-						partial_velocity += (particles->sorted_corr_vel_d[j] - particles->corrected_vel_d[index]) * Poly6(dis2) * (particles->mass_d[j] / particles->dens_d[j]);
+						partial_velocity += (particles->sorted_corr_vel_d[j] - particles->corrected_vel_d[index]) * Poly6(Poly6_constant, dis2) * (particles->mass_d[j] / particles->dens_d[j]);
 					}
 				}
 			}

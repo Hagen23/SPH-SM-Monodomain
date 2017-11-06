@@ -113,6 +113,8 @@ void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
 // 	Number_Particles++;
 // }
 
+
+/// Calculates the cell position for each particle
 void SPH_SM_monodomain::calcHash(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles)
 {
 	uint numThreads, numBlocks;
@@ -124,6 +126,7 @@ void SPH_SM_monodomain::calcHash(uint *gridParticleHash, uint * gridParticleInde
 	getLastCudaError("Kernel execution failed");
 }
 
+/// Sorts the hashes and indices
 void SPH_SM_monodomain::sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, uint numberParticles)
 {
 	thrust::sort_by_key(thrust::device_ptr<uint>(dGridParticleHash), 
@@ -131,6 +134,7 @@ void SPH_SM_monodomain::sortParticles(uint *dGridParticleHash, uint *dGridPartic
 		thrust::device_ptr<uint>(dGridParticleIndex));
 }
 
+/// Reorders the particles based on the hashes and indices. Also finds the start and end cells.
 void SPH_SM_monodomain::reorderDataAndFindCellStart(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells)
 {
 	uint numThreads, numBlocks;
@@ -401,12 +405,24 @@ void SPH_SM_monodomain::Compute_Density_SingPressure()
 
 void SPH_SM_monodomain::calculate_corrected_velocity(Particles *particles)
 {
+	// uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	/// Computes predicted velocity from forces except viscoelastic and pressure
+	apply_external_forces();
 
+	/// Calculates corrected velocity
+	projectPositions();
+
+	m3Real time_delta_1 = 1.0f / Time_Delta;
+
+	for (int i = 0; i < Number_Particles; i++)
+	{
+		particles->corrected_vel_d[i] = particles->predicted_vel_d[i] + (particles->mGoalPos_d[i] - particles->pos_d[i]) * time_delta_1 * alpha;
+	}
 }
 
-void SPH_SM_monodomain::set_stim(Particles *particles, m3Vector center, m3Real radius, m3Real stim_strength)
+void SPH_SM_monodomain::set_stim(m3Vector center, m3Real radius, m3Real stim_strength)
 {
-	Particle *p;
+	// Particle *p;
 	isStimOn = true;
 	for(int k = 0; k < Number_Particles; k++)
 	{
@@ -421,7 +437,7 @@ void SPH_SM_monodomain::set_stim(Particles *particles, m3Vector center, m3Real r
 void SPH_SM_monodomain::turnOnStim_Cube(std::vector<m3Vector> positions)
 {
 	m3Vector cm;
-	Particle *p;
+	// Particle *p;
 
 	for(m3Vector pos : positions)
 	{
@@ -435,16 +451,16 @@ void SPH_SM_monodomain::turnOnStim_Cube(std::vector<m3Vector> positions)
 	
 	for(int k = 0; k < Number_Particles; k++)
 	{
-		p = &Particles[k];
-		m3Vector position = p->pos;
+		// p = &Particles[k];
+		m3Vector position = particles->pos[k];
 		if ((position.y == 0.0f && position.x == 0.3f) || (position.y == 0.0f && position.x >= 0.68399f))
-			p->mFixed = true;
+			particles->mFixed[k] = true;
 	}
 
 	cout<<"Particles stimulated."<<endl;
 }
 
-void SPH_SM_monodomain::turnOnStim_Mesh(Particles *p, std::vector<m3Vector> positions)
+void SPH_SM_monodomain::turnOnStim_Mesh(std::vector<m3Vector> positions)
 {
 	m3Vector cm;
 
@@ -455,19 +471,19 @@ void SPH_SM_monodomain::turnOnStim_Mesh(Particles *p, std::vector<m3Vector> posi
 	}
 	for(int k = 0; k < Number_Particles; k++)
 	{
-		if ((p->pos[k].x >= 0.3 && p->pos[k].x <= 0.36) || (p->pos[k].x >= 1.27 && p->pos[k].x <= 1.29f))
-			p->mFixed[k] = true;
+		if ((particles->pos[k].x >= 0.3 && particles->pos[k].x <= 0.36) || (particles->pos[k].x >= 1.27 && particles->pos[k].x <= 1.29f))
+			particles->mFixed[k] = true;
 	}
 }
 
-void SPH_SM_monodomain::turnOffStim(Particles *p)
+void SPH_SM_monodomain::turnOffStim()
 {
 	isStimOn = false;
 	for(int k = 0; k < Number_Particles; k++)
 	{
-		if(p->stim[k] > 0.0f)
+		if(particles->stim[k] > 0.0f)
 		{
-			p->stim[k] = 0.0f;
+			particles->stim[k] = 0.0f;
 		}
 	}
 }
@@ -483,11 +499,14 @@ void SPH_SM_monodomain::print_report(double avg_fps, double avg_step_d)
 
 void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 {
+	calculate_corrected_velocity();
+
 	calcHash(dGridParticleHash, dGridParticleIndex, p.pos_d, Number_Particles);
 
 	sortParticles(dGridParticleHash, dGridParticleIndex, Number_Particles);
 
 	reorderDataAndFindCellStart(particles, cellStart, cellEnd, gridParticleHash, gridParticleIndex, numParticles, numCells);
+
 	// tpoint tstart = std::chrono::system_clock::now();
 	// Find_neighbors();
 	// d_find_neighbors += std::chrono::system_clock::now() - tstart;

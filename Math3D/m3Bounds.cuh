@@ -32,7 +32,7 @@ public:
 		return false;
 	}
 
-	bool operator == (const m3Bounds &b) const {
+	__host__ __device__ bool operator == (const m3Bounds &b) const {
 		return (min == b.min) && (max == b.max);
 	}
 
@@ -41,11 +41,11 @@ public:
 		max.maximum(b.max);
 	}
 
-	void operator += (const m3Bounds &b) {
+	__host__ __device__ void operator += (const m3Bounds &b) {
 		combine(b);
 	}
 
-	m3Bounds operator + (const m3Bounds &b) const {
+	__host__ __device__ m3Bounds operator + (const m3Bounds &b) const {
 		m3Bounds r = *this;
 		r.combine(b);
 		return r;
@@ -73,7 +73,7 @@ public:
 			min.y <= v.y && v.y <= max.y;
 	}
 
-	void operator += (const m3Vector &v) {
+	__host__ __device__ void operator += (const m3Vector &v) {
 		include(v);
 	}
 
