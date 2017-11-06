@@ -22,6 +22,13 @@ This class implements the SPH [5] and SM [2] algorithms with the needed modifica
 
 #include <helper_cuda.h>
 
+#include <SPH_SM_M_cuda_kernels.cuh>
+
+#include "thrust/device_ptr.h"
+#include "thrust/for_each.h"
+#include "thrust/iterator/zip_iterator.h"
+#include "thrust/sort.h"
+
 #define PI 3.141592f
 #define INF 1E-12f
 
@@ -73,11 +80,6 @@ class SPH_SM_monodomain
 		m3Real 		mu;						// Viscosity.
 		m3Real		velocity_mixing;		// Velocity mixing parameter for the intermediate velocity.
 
-		// Smoothing kernel constants for SPH
-		m3Real 		Poly6_constant, Spiky_constant, Visco_Constant;
-		// Smoothing kernel constants for SPH; this constant has to change depending on the dimension of the simulation. B-spline kernel as in J.J. Monaghan, Smoothed particle hydrodynamics, Annual Review of Astronomy and Astrophysics 30 (1992).
-		m3Real 		B_spline_constant;
-
 		// SM Parameters
 		m3Bounds 	bounds;					// Controls the bounds of the simulation.
 		m3Real 		alpha;					// alpha[0...1] Simulates stiffness.
@@ -125,37 +127,15 @@ class SPH_SM_monodomain
 		void Init_Fluid(std::vector<m3Vector> positions);	// initialize fluid
 		// void Init_Particle(m3Vector pos, m3Vector vel);		// initialize particle system
 		
-		__device__ m3Vector Calculate_Cell_Position(m3Vector pos);		// get cell position
-		__device__ int Calculate_Cell_Hash(m3Vector pos);				// get cell hash number
 		void print_report(double avg_fps = 0.0f, double avg_step_d = 0.0f);
 		void add_viscosity(float value);
-
-		// Kernel function
-		__device__ m3Real Poly6(m3Real r2);							// for density
-		__device__ m3Real Spiky(m3Real r);								// for pressure
-		__device__ m3Real Visco(m3Real);								// for viscosity
-
-		__device__ m3Real B_spline(m3Real r);							// B-spline kernel function
-		__device__ m3Real B_spline_1(m3Real r);						// B-spline kernel first derivative
-		__device__ m3Real B_spline_2(m3Real r);						// B-spline kernel second derivative 
 
 		/// Hashed the particles into a grid
 		void calcHash(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles);
 		
-		void calcHashD(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles);
-		
 		void sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, uint numParticles);
-    	
-		void reorderDataAndFindCellStartD(Particles *p, 
-								uint   *cellStart,        // output: cell start index
-								uint   *cellEnd,          // output: cell end index
-								uint   *gridParticleHash, // input: sorted grid hashes
-								uint   *gridParticleIndex,// input: sorted particle indices
-								uint    numParticles);
 
 		void reorderDataAndFindCellStart(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells);
-
-		void Find_neighbors();
 
 		/// SM methods
 		/// Calculates the predicted velocity, and the corrected velocity using SM, in order to
@@ -166,7 +146,7 @@ class SPH_SM_monodomain
 		/// Applies external forces for F-adv, including gravity
 		void apply_external_forces(m3Vector* forcesArray, int* indexArray, int size);
 		/// Obtains the corrected velocity of the particles using Shape Matching
-		void projectPositionsD();
+		void projectPositions();
 
 		/// Monodomain methods
 		void calculate_cell_model(Particles *particles);											// Updates the ionic current and recovery variable with the cell model
@@ -178,7 +158,7 @@ class SPH_SM_monodomain
 		/// SPH Methods
 		void calculate_intermediate_velocity();
 		void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);
-		void cell_Density_SingPressure();
+		
 		void Compute_Density_SingPressure();
 		void Compute_Force();	
 		void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);						// Calculates forces for SPH, voltage for monodomain
