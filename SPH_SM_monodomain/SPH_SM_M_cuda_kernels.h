@@ -1,13 +1,14 @@
+#pragma once
 #ifndef _SPH_SM_M_KERNEL_H_
 #define _SPH_SM_M_KERNEL_H_
 
-#include <m3Vector.cuh>
-#include <m3Bounds.cuh>
-#include <m3Real.cuh>
-#include <m3Matrix.cuh>
-#include <m9Matrix.cuh>
+#include <m3Vector.h>
+#include <m3Bounds.h>
+#include <m3Real.h>
+#include <m3Matrix.h>
+#include <m9Matrix.h>
 
-#include <Particle.cuh>
+#include <Particle.h>
 
 #include <vector>
 #include <map>
@@ -18,6 +19,8 @@
 #define PI 3.141592f
 #define INF 1E-12f
 
+extern "C"
+{
 // Kernel function
 __device__ m3Real kernel = 0.035f;
 
@@ -366,7 +369,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 	// }
 }
 
-__global__ void calculate_cell_model(Particles *particles, m3Real Time_Delta)
+__global__ void calculate_cell_modelD(Particles *particles, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -380,7 +383,7 @@ __global__ void calculate_cell_model(Particles *particles, m3Real Time_Delta)
 
 		u = (particles->Vm_d[index] - FH_Vr) / denom;
 
-		particles->Iion_d[index] += Time_Delta * (C1*u*(u - asd)*(u - 1.0) + C2* particles->w[index]) / particles->mass_d[index];
+		particles->Iion_d[index] += Time_Delta * (C1*u*(u - asd)*(u - 1.0) + C2* particles->w_d[index]) / particles->mass_d[index];
 		
 		particles->w_d[index] += Time_Delta * C3*(u - C4*particles->w_d[index]) / particles->mass_d[index];
 	// }
@@ -444,7 +447,7 @@ __global__ void Update_Properties(Particles *particles, m3Bounds bounds, m3Vecto
 	// }
 }
 
-__global__ void calculate_intermediate_velocity(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
+__global__ void calculate_intermediate_velocityD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -485,5 +488,6 @@ __global__ void calculate_intermediate_velocity(Particles *particles, uint *m_dG
 		}
 		particles->sorted_int_vel_d[index] = particles->sorted_corr_vel_d[index] + partial_velocity * velocity_mixing;
 	// }
+}
 }
 #endif

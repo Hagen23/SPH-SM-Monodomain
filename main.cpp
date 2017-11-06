@@ -15,7 +15,7 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #include <iostream>
 #include <stdio.h>
 
-#include <SPH_SM_monodomain.cuh>
+#include <SPH_SM_monodomain.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #  define WINDOWS_LEAN_AND_MEAN
@@ -35,6 +35,9 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #endif
 
 using namespace std;
+
+extern "C" uint iDivUp(uint a, uint b);
+extern "C" void computeGridSize(uint n, uint blockSize, uint &numBlocks, uint &numThreads);
 
 struct color{
 	float r, g, b;
@@ -280,7 +283,7 @@ void motion(int x, int y)
 
 void exit_simulation()
 {
-	sph->print_report(average_fps / total_fps_counts, average_step_duration.count() / (max_time_steps - time_steps));
+	// sph->print_report(average_fps / total_fps_counts, average_step_duration.count() / (max_time_steps - time_steps));
 	cout << "Average FPS: " << average_fps / total_fps_counts<< endl;
 	if(simulation_active)
 		cout << "Simulation stopped. Avg step duration: " << average_step_duration.count() / (max_time_steps - time_steps) << endl;

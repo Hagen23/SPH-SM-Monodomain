@@ -1,8 +1,9 @@
+#pragma once
 #ifndef M2_MATRIX_H
 #define M2_MATRIX_H
 //---------------------------------------------------------------------------
 
-#include "math3d.cuh"
+#include "math3d.h"
 
 // #define EPSILON 1e-8
 // #define JACOBI_ITERATIONS 20

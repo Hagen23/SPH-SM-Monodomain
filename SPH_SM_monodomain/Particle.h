@@ -1,7 +1,8 @@
+#pragma once
 #ifndef __PARTICLE_H__
 #define __PARTICLE_H__
 
-#include <m3Vector.cuh>
+#include <m3Vector.h>
 #include <vector>
 #include <helper_cuda.h>
 #include <cuda_runtime.h>
@@ -129,10 +130,10 @@ public:
 		checkCudaErrors(cudaMalloc((void**)&w_d, memSize));
 		checkCudaErrors(cudaMalloc((void**)&sorted_w_d, memSize));
 
-		checkCudaErrors(cudaMemcpy(pos, pos_d, memSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(pos, mOriginalPos_d, memSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(pos, mGoalPos_d, memSize, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemcpy(pos, mFixed_d, memSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(pos_d, pos, memSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(mOriginalPos_d, pos, memSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(mGoalPos_d, pos, memSize, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(mFixed_d, pos, memSize, cudaMemcpyHostToDevice));
 	}
 };
 

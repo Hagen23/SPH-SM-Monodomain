@@ -1,4 +1,4 @@
-#include "m3Matrix.cuh"
+#include "m3Matrix.h"
 
 __host__ __device__ void m3Matrix::jacobiRotate(m3Matrix& A, m3Matrix& R, int p, int q)
 {
