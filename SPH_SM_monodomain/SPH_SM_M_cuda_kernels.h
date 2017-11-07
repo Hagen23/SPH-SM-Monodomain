@@ -19,8 +19,8 @@
 #define PI 3.141592f
 #define INF 1E-12f
 
-extern "C"
-{
+// extern "C"
+// {
 // Kernel function
 __device__ m3Real kernel = 0.035f;
 
@@ -489,5 +489,5 @@ __global__ void calculate_intermediate_velocityD(Particles *particles, uint *m_d
 		particles->sorted_int_vel_d[index] = particles->sorted_corr_vel_d[index] + partial_velocity * velocity_mixing;
 	// }
 }
-}
+// }
 #endif

@@ -35,7 +35,7 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #endif
 
 using namespace std;
-
+	
 struct color{
 	float r, g, b;
 };
