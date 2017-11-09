@@ -3,7 +3,7 @@ LDFLAGS = -lGL -lglut -lGLU
 OUTF = build/
 MKDIR_P = mkdir -p
 
-objects = main.o SPH_SM_monodomain/SPH_SM_monodomain.o Math3D/m3Matrix.o Math3D/m9Matrix.o 
+objects = main.o SPH_SM_monodomain/SPH_SM_monodomain.o Math3D/m3Matrix.o Math3D/m9Matrix.o SPH_SM_monodomain/Particle.o
 
 all: $(objects) $(OUTF) 
 		nvcc $(CFLAGS) -arch=sm_20 $(objects) -o $(OUTF)app $(LDFLAGS)

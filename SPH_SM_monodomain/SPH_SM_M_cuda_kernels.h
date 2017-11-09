@@ -24,10 +24,6 @@
 // Kernel function
 __device__ m3Real kernel = 0.035f;
 
-// __device__ m3Real Poly6_constant = 315.0f/(64.0f * m3Pi * pow(0.035f, 9));
-// __device__ m3Real Spiky_constant = 45.0f/(m3Pi * pow(0.035f, 6));
-// __device__ m3Real B_spline_constant = 1.0f / (m3Pi*0.035f*0.035f*0.035f);
-
 __device__ m3Real K = 0.8f;
 __device__ m3Real Stand_Density = 5000.0f;
 
@@ -35,12 +31,8 @@ __device__ m3Real voltage_constant = 50;
 __device__ m3Real max_pressure = 100000;
 __device__ m3Real max_voltage = 500;
 
-// __device__ m3Vector max_vel = m3Vector(3.0f, 3.0f, 3.0f);
 __device__ m3Real velocity_mixing = 1.0f;
 
-/// Time step is calculated as in 2016 - Divergence-Free SPH for Incompressible and Viscous Fluids.
-/// Then we adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition [6] ∆t ≤ 0.4 * d / (||vmax||)
-// __device__ m3Real Time_Delta = 0.4 * kernel / sqrt(max_vel.magnitudeSquared());
 __device__ m3Real Wall_Hit = -0.05f;
 __device__ m3Real mu = 100.0f;
 
@@ -59,21 +51,31 @@ __device__ m3Real C3 = 0.011;
 __device__ m3Real C4 = 0.55;
 
 /// For density computation
-__device__ float Poly6(m3Real Poly6_constant, float r2)
+__device__ m3Real Poly6(m3Real Poly6_constant, m3Real r2)
 {
-	return (r2 >= 0 && r2 <= kernel*kernel) ? Poly6_constant * pow(kernel * kernel - r2, 3) : 0;
+	m3Real pow_value = 0.035f * 0.035f - r2;
+	if(r2 >= 0 && r2 <= 0.035f*0.035f)
+		return Poly6_constant * pow_value * pow_value * pow_value;
+	else 
+		return 0.0f;
 }
 
 /// For force of pressure computation
 __device__ float Spiky(m3Real Spiky_constant, float r)
 {
-	return (r >= 0 && r <= kernel ) ? -Spiky_constant * (kernel - r) * (kernel - r) : 0;
+	if(r >= 0 && r <= kernel)
+		return -Spiky_constant * (kernel - r) * (kernel - r) ;
+	else
+		return 0.0f;
 }
 
 /// For viscosity computation
 __device__ float Visco(m3Real Spiky_constant, float r)
 {
-	return (r >= 0 && r <= kernel ) ? Spiky_constant * (kernel - r) : 0;
+	if(r >= 0 && r <= kernel )
+		return Spiky_constant * (kernel - r);
+	else
+		return 0;
 }
 
 __device__ m3Real B_spline(m3Real B_spline_constant, m3Real r)
@@ -146,7 +148,21 @@ void calcHashD(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, 
 }
 
 __global__ 
-void reorderDataAndFindCellStartD(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles)
+void reorderDataAndFindCellStartD(
+	m3Vector *sortedPos_d, m3Vector *pos_d,
+	m3Vector *sortedVel_d, m3Vector *vel_d,
+	m3Vector *sorted_corr_vel_d, m3Vector *corrected_vel_d,
+	m3Vector *sortedAcc_d, m3Vector *acc_d,
+	m3Real *sortedMass_d, m3Real *mass_d,
+	bool *sorted_mFixed_d, bool *mFixed_d,
+	m3Real *sorted_dens_d, m3Real *dens_d,
+	m3Real *sorted_pres_d, m3Real *pres_d,
+	m3Real *sorted_Vm_d, m3Real *Vm_d,
+	m3Real *sorted_Inter_Vm_d, m3Real *Inter_Vm_d,
+	m3Real *sorted_Iion_d, m3Real *Iion_d,
+	m3Real *sorted_stim_d, m3Real *stim_d,
+	m3Real *sorted_w_d, m3Real *w_d,
+	uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles)
 {
 	extern __shared__ uint sharedHash[];    // blockSize + 1 elements
     uint index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -197,27 +213,34 @@ void reorderDataAndFindCellStartD(Particles *p, uint *cellStart, uint *cellEnd, 
         // Now use the sorted index to reorder the pos and vel data
         uint sortedIndex = gridParticleIndex[index];
         
-		p->sortedPos_d[index] = p->pos_d[sortedIndex];
-		p->sortedVel_d[index] = p->vel_d[sortedIndex];
-		p->sorted_pred_vel_d[index] = p->predicted_vel_d[sortedIndex];
-		p->sorted_int_vel_d[index] = p->inter_vel_d[sortedIndex];
-		p->sorted_corr_vel_d[index] = p->corrected_vel_d[sortedIndex];
-		p->sortedAcc_d[index] = p->acc_d[sortedIndex];
-		p->sortedMass_d[index] = p->mass_d[sortedIndex];
-		p->sorted_mOriginalPos_d[index] = p->mOriginalPos_d[sortedIndex];
-		p->sorted_mGoalPos_d[index] = p->mGoalPos_d[sortedIndex];
-		p->sorted_mFixed_d[index] = p->mFixed_d[sortedIndex];
-		p->sorted_dens_d[index] = p->dens_d[sortedIndex];
-		p->sorted_pres_d[index] = p->pres_d[sortedIndex];
-		p->sorted_Vm_d[index] = p->Vm_d[sortedIndex];
-		p->sorted_Inter_Vm_d[index] = p->Inter_Vm_d[sortedIndex];
-		p->sorted_Iion_d[index] = p->Iion_d[sortedIndex];
-		p->sorted_stim_d[index] = p->stim_d[sortedIndex];
-		p->sorted_w_d[index] = p->w_d[sortedIndex];
+		sortedPos_d[index] = pos_d[sortedIndex];
+		sortedVel_d[index] = vel_d[sortedIndex];
+		// sorted_pred_vel_d[index] = predicted_vel_d[sortedIndex];
+		// sorted_int_vel_d[index] = inter_vel_d[sortedIndex];
+		sorted_corr_vel_d[index] = corrected_vel_d[sortedIndex];
+		sortedAcc_d[index] = acc_d[sortedIndex];
+		sortedMass_d[index] = mass_d[sortedIndex];
+		// sorted_mOriginalPos_d[index] = mOriginalPos_d[sortedIndex];
+		// sorted_mGoalPos_d[index] = mGoalPos_d[sortedIndex];
+		sorted_mFixed_d[index] = mFixed_d[sortedIndex];
+		sorted_dens_d[index] = dens_d[sortedIndex];
+		sorted_pres_d[index] = pres_d[sortedIndex];
+
+		sorted_Vm_d[index] = Vm_d[sortedIndex];
+		sorted_Inter_Vm_d[index] = Inter_Vm_d[sortedIndex];
+		sorted_Iion_d[index] = Iion_d[sortedIndex];
+		sorted_stim_d[index] = stim_d[sortedIndex];
+		sorted_w_d[index] = w_d[sortedIndex];
 	}
 }
 
-__global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
+__global__ void Compute_Density_SingPressureD(
+	m3Vector *sortedPos_d,
+	m3Real *sorted_dens_d,
+	m3Real *sorted_pres_d,
+	m3Real *sortedMass_d,
+	m3Real *sorted_Vm_d,
+	uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -226,10 +249,10 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
-		particles->sorted_dens_d[index] = 0.f;
-		particles->sorted_pres_d[index] = 0.f;
+		sorted_dens_d[index] = 0.f;
+		sorted_pres_d[index] = 0.f;
 		
-		CellPos = Calculate_Cell_Position(particles->sortedPos_d[index], Cell_Size);
+		CellPos = Calculate_Cell_Position(sortedPos_d[index], Cell_Size);
 
 		for(int k = -1; k <= 1; k++)
 		for(int j = -1; j <= 1; j++)
@@ -249,12 +272,12 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 					if(j != index)
 					{
 						m3Vector Distance;
-						Distance = particles->sortedPos_d[index] - particles->sortedPos_d[j];
+						Distance = sortedPos_d[index] - sortedPos_d[j];
 						
-						float dis2 = (float)Distance.magnitudeSquared();
+						m3Real dis2 = Distance.x * Distance.x + Distance.y * Distance.y + Distance.z * Distance.z;
 						// p->dens += np->mass * B_spline(Distance.magnitude());
 
-						particles->sorted_dens_d[index] += particles->sortedMass_d[j] * Poly6(Poly6_constant, dis2);
+						sorted_dens_d[index] += sortedMass_d[j] * Poly6(Poly6_constant, dis2);
 					}
 				}
 			}
@@ -262,21 +285,21 @@ __global__ void Compute_Density_SingPressureD(Particles *particles, uint *m_dGri
 
 		}
 
-		particles->sorted_dens_d[index] += particles->sortedMass_d[index] * Poly6(Poly6_constant, 0.0f);
+		// sorted_dens_d[index] += sortedMass_d[index] * Poly6(Poly6_constant, 0.0f);
 
 		/// Calculates the pressure, Eq.12
-		particles->sorted_pres_d[index] = K * (particles->sorted_dens_d[index]  - Stand_Density);
+		sorted_pres_d[index] = K * (sorted_dens_d[index]  - Stand_Density);
 		
-		particles->sorted_pres_d[index] -= particles->sorted_Vm_d[index] * voltage_constant;
+		sorted_pres_d[index] -= sorted_Vm_d[index] * voltage_constant;
 
-		if(particles->sorted_pres_d[index] < -max_pressure)
-			particles->sorted_pres_d[index] = -max_pressure;
-		else if(particles->sorted_pres_d[index] > max_pressure)
-			particles->sorted_pres_d[index] = max_pressure;
+		if(sorted_pres_d[index] < -max_pressure)
+			sorted_pres_d[index] = -max_pressure;
+		else if(sorted_pres_d[index] > max_pressure)
+			sorted_pres_d[index] = max_pressure;
 	// }
 }
 
-__global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Spiky_constant, m3Real B_spline_constant, m3Real Time_Delta)
+__global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Spiky_constant, m3Real B_spline_constant, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -369,7 +392,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 	// }
 }
 
-__global__ void calculate_cell_modelD(Particles *particles, m3Real Time_Delta)
+__global__ void calculate_cell_modelD(m3Real *Iion_d, m3Real *w_d, m3Real *mass_d, m3Real *Vm_d, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -381,18 +404,18 @@ __global__ void calculate_cell_modelD(Particles *particles, m3Real Time_Delta)
 	// {
 		// p = &Particles[k];
 
-		u = (particles->Vm_d[index] - FH_Vr) / denom;
+		u = (Vm_d[index] - FH_Vr) / denom;
 
-		particles->Iion_d[index] += Time_Delta * (C1*u*(u - asd)*(u - 1.0) + C2* particles->w_d[index]) / particles->mass_d[index];
+		Iion_d[index] += Time_Delta * (C1*u*(u - asd)*(u - 1.0) + C2* w_d[index]) / mass_d[index];
 		
-		particles->w_d[index] += Time_Delta * C3*(u - C4*particles->w_d[index]) / particles->mass_d[index];
+		w_d[index] += Time_Delta * C3*(u - C4*w_d[index]) / mass_d[index];
 	// }
 }
 
 
 /// Time integration as in 2016 - Fluid simulation by the SPH Method, a survey.
 /// Eq.13 and Eq.14
-__global__ void Update_Properties(Particles *particles, m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
+__global__ void Update_PropertiesD(Particles *particles, m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -447,7 +470,13 @@ __global__ void Update_Properties(Particles *particles, m3Bounds bounds, m3Vecto
 	// }
 }
 
-__global__ void calculate_intermediate_velocityD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
+__global__ void calculate_intermediate_velocityD(
+	m3Vector *sortedPos_d,
+	m3Vector *sorted_corr_vel_d,
+	m3Real *sortedMass_d,
+	m3Real *sorted_dens_d,
+	m3Vector *sorted_int_vel_d,
+	uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Poly6_constant)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -458,7 +487,7 @@ __global__ void calculate_intermediate_velocityD(Particles *particles, uint *m_d
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
 		// p = &Particles[k];
-		CellPos = Calculate_Cell_Position(particles->sortedPos_d[index], Cell_Size);
+		CellPos = Calculate_Cell_Position(sortedPos_d[index], Cell_Size);
 		m3Vector partial_velocity(0.0f, 0.0f, 0.0f);
 
 		for(int k = -1; k <= 1; k++)
@@ -479,14 +508,15 @@ __global__ void calculate_intermediate_velocityD(Particles *particles, uint *m_d
 					if(j != index)
 					{
 						m3Vector Distance;
-						Distance = particles->sortedPos_d[index] - particles->sortedPos_d[j];
-						float dis2 = (float)Distance.magnitudeSquared();
-						partial_velocity += (particles->sorted_corr_vel_d[j] - particles->corrected_vel_d[index]) * Poly6(Poly6_constant, dis2) * (particles->mass_d[j] / particles->dens_d[j]);
+						Distance = sortedPos_d[index] - sortedPos_d[j];
+						m3Real dis2 = Distance.x * Distance.x + Distance.y * Distance.y + Distance.z * Distance.z;
+						// partial_velocity += (sorted_corr_vel_d[j] - sorted_corr_vel_d[index]) * Poly6(Poly6_constant, dis2) * (sortedMass_d[j] / sorted_dens_d[j]);
+						partial_velocity += sorted_corr_vel_d[0];
 					}
 				}
 			}
 		}
-		particles->sorted_int_vel_d[index] = particles->sorted_corr_vel_d[index] + partial_velocity * velocity_mixing;
+		sorted_int_vel_d[index] = sorted_corr_vel_d[index] + partial_velocity * velocity_mixing;
 	// }
 }
 // }

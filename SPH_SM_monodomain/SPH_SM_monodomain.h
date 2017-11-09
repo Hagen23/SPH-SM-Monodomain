@@ -122,9 +122,22 @@ class SPH_SM_monodomain
 		/// Hashed the particles into a grid
 		void calcHash(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles);
 		
-		void sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, uint numParticles);
+		void sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, int numParticles);
 
-		void reorderDataAndFindCellStart(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells);
+		void reorderDataAndFindCellStart(m3Vector *sortedPos_d, m3Vector *pos_d,
+		m3Vector *sortedVel_d, m3Vector *vel_d,
+		m3Vector *sorted_corr_vel_d, m3Vector *corrected_vel_d,
+		m3Vector *sortedAcc_d, m3Vector *acc_d,
+		m3Real *sortedMass_d, m3Real *mass_d,
+		bool *sorted_mFixed_d, bool *mFixed_d,
+		m3Real *sorted_dens_d, m3Real *dens_d,
+		m3Real *sorted_pres_d, m3Real *pres_d,
+		m3Real *sorted_Vm_d, m3Real *Vm_d,
+		m3Real *sorted_Inter_Vm_d, m3Real *Inter_Vm_d,
+		m3Real *sorted_Iion_d, m3Real *Iion_d,
+		m3Real *sorted_stim_d, m3Real *stim_d,
+		m3Real *sorted_w_d, m3Real *w_d,
+		uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells);
 
 		/// SM methods
 		/// Calculates the predicted velocity, and the corrected velocity using SM, in order to
@@ -144,13 +157,10 @@ class SPH_SM_monodomain
 		void turnOffStim();					// Turns the stimulation off for all particles
 
 		/// SPH Methods
-		void calculate_intermediate_velocity();
-		void Compute_Density_SingPressureD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);
-		
+		void calculate_intermediate_velocity();		
 		void Compute_Density_SingPressure();
-		void Compute_Force();	
-		// void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, uint *m_numParticles, uint *m_numGridCells);						// Calculates forces for SPH, voltage for monodomain
-		void Update_Properties(Particles *particles);					// Updates Position and velocity for SPH, voltage for monodomain
+		void Compute_Force();
+		void Update_Properties();					// Updates Position and velocity for SPH, voltage for monodomain
 
 		void compute_SPH_SM_monodomain();
 		void Animation();
