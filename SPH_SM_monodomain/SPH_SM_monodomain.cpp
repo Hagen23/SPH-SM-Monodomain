@@ -14,7 +14,7 @@ using namespace std;
 
 SPH_SM_monodomain::SPH_SM_monodomain()
 {
-	kernel = 0.035f;
+	kernel = 0.045f;
 
 	Max_Number_Paticles = 50000;
 	total_time_steps = 0;
@@ -30,7 +30,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	
 	World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 
-	Cell_Size = 0.04;
+	Cell_Size = 0.09;
 	Grid_Size = World_Size / Cell_Size;
 	Grid_Size.x = (int)Grid_Size.x;
 	Grid_Size.y = (int)Grid_Size.y;
@@ -89,6 +89,8 @@ void SPH_SM_monodomain::add_viscosity(float value)
 void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
 {
 	Number_Particles = positions.size();
+
+	cout <<"Num particles: " <<Number_Particles<< endl;
 
 	particles->init_particles(positions, Stand_Density, Number_Particles);
 
@@ -698,7 +700,20 @@ void SPH_SM_monodomain::Compute_Force()
 	uint numThreads, numBlocks;
 	computeGridSize(Number_Particles, 256, numBlocks, numThreads);
 
-	Compute_ForceD<<<numBlocks, numThreads>>>(particles, dGridParticleIndex, dCellStart, dCellEnd, Number_Particles, Number_Cells, Cell_Size, Grid_Size, Spiky_constant, B_spline_constant, Time_Delta);
+	Compute_ForceD<<<numBlocks, numThreads>>>(	
+	particles->pos_d, particles->sortedPos_d,
+	particles->vel_d, particles->sortedVel_d,
+	particles->acc_d, particles->sortedAcc_d,
+	particles->inter_vel_d, particles->sorted_int_vel_d,
+	particles->Vm_d, particles->sorted_Vm_d,
+	particles->Inter_Vm_d, particles->sorted_Inter_Vm_d,
+	particles->stim_d, particles->sorted_stim_d,
+	particles->Iion_d, particles->sorted_Iion_d,
+	particles->w_d, particles->sorted_w_d,
+	particles->mass_d, particles->sortedMass_d,
+	particles->dens_d, particles->sorted_dens_d,
+	particles->pres_d, particles->sorted_pres_d,
+	dGridParticleIndex, dCellStart, dCellEnd, Number_Particles, Number_Cells, Cell_Size, Grid_Size, Spiky_constant, B_spline_constant, Time_Delta);
 
 	cudaDeviceSynchronize();
 	getLastCudaError("Kernel execution failed: Compute_ForceD");
@@ -709,7 +724,16 @@ void SPH_SM_monodomain::Update_Properties()
 	uint numThreads, numBlocks;
 	computeGridSize(Number_Particles, 256, numBlocks, numThreads);
 
-	Update_PropertiesD<<<numBlocks, numThreads>>>(particles, bounds, World_Size, Time_Delta);
+	Update_PropertiesD<<<numBlocks, numThreads>>>(	
+		particles->pos_d,
+		particles->vel_d,
+		particles->inter_vel_d,
+		particles->acc_d,
+		particles->mass_d,
+		particles->Vm_d,
+		particles->Inter_Vm_d,
+		particles->mFixed_d,
+		bounds, World_Size, Time_Delta);
 
 	cudaDeviceSynchronize();
 	getLastCudaError("Kernel execution failed: Update_PropertiesD");
@@ -755,13 +779,13 @@ void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 
 	Compute_Density_SingPressure();
 
-	// Compute_Force();
+	Compute_Force();
 
-	// Update_Properties();
+	Update_Properties();
 
-	// checkCudaErrors(cudaMemcpy(particles->pos, particles->pos_d, memSize, cudaMemcpyDeviceToHost));
+	checkCudaErrors(cudaMemcpy(particles->pos, particles->pos_d, sizeof(m3Vector) * Number_Particles, cudaMemcpyDeviceToHost));
 
-	// checkCudaErrors(cudaMemcpy(particles->vel, particles->vel_d, memSize, cudaMemcpyDeviceToHost));
+	checkCudaErrors(cudaMemcpy(particles->vel, particles->vel_d, sizeof(m3Vector) * Number_Particles, cudaMemcpyDeviceToHost));
 
 	
 	// tpoint tstart = std::chrono::system_clock::now();

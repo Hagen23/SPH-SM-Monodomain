@@ -22,7 +22,7 @@
 // extern "C"
 // {
 // Kernel function
-__device__ m3Real kernel = 0.035f;
+__device__ m3Real kernel = 0.045f;
 
 __device__ m3Real K = 0.8f;
 __device__ m3Real Stand_Density = 5000.0f;
@@ -299,7 +299,20 @@ __global__ void Compute_Density_SingPressureD(
 	// }
 }
 
-__global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Spiky_constant, m3Real B_spline_constant, m3Real Time_Delta)
+__global__ void Compute_ForceD(
+	m3Vector *pos_d, m3Vector *sortedPos_d,
+	m3Vector *vel_d, m3Vector *sortedVel_d,
+	m3Vector *acc_d, m3Vector *sortedAcc_d,
+	m3Vector *inter_vel_d, m3Vector *sorted_int_vel_d,
+	m3Real *Vm_d, m3Real *sorted_Vm_d,
+	m3Real *Inter_Vm_d, m3Real *sorted_Inter_Vm_d,
+	m3Real *stim_d, m3Real *sorted_stim_d,
+	m3Real *Iion_d, m3Real *sorted_Iion_d,
+	m3Real *w_d, m3Real *sorted_w_d,
+	m3Real *mass_d, m3Real *sortedMass_d,
+	m3Real *dens_d, m3Real *sorted_dens_d,
+	m3Real *pres_d, m3Real *sorted_pres_d,
+	uint *m_dGridParticleIndex, uint *m_dCellStart, uint *m_dCellEnd, int m_numParticles, int m_numGridCells, m3Real Cell_Size, m3Vector Grid_Size, m3Real Spiky_constant, m3Real B_spline_constant, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -311,10 +324,10 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 	// {
 		// p = &Particles[k];
 
-		particles->sortedAcc_d[index] = m3Vector(0.0f, 0.0f, 0.0f);
-		particles->sorted_Inter_Vm_d[index] = 0.0f;
+		sortedAcc_d[index] = m3Vector(0.0f, 0.0f, 0.0f);
+		sorted_Inter_Vm_d[index] = 0.0f;
 
-		CellPos = Calculate_Cell_Position(particles->sortedPos_d[index], Cell_Size);
+		CellPos = Calculate_Cell_Position(sortedPos_d[index], Cell_Size);
 
 		for(int k = -1; k <= 1; k++)
 		for(int j = -1; j <= 1; j++)
@@ -334,7 +347,7 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 					if(j != index)
 					{
 						m3Vector Distance;
-						Distance = particles->sortedPos_d[index] - particles->sortedPos_d[j];
+						Distance = sortedPos_d[index] - sortedPos_d[j];
 						float dis2 = (float)Distance.magnitudeSquared();
 
 						if(dis2 > INF)
@@ -342,21 +355,21 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 							float dis = sqrt(dis2);
 
 							/// Calculates the force of pressure, Eq.10
-							float Volume = particles->sortedMass_d[j] / particles->sorted_dens_d[j];
+							float Volume = sortedMass_d[j] / sorted_dens_d[j];
 							// float Force_pressure = Volume * (p->pres+np->pres)/2 * B_spline_1(dis);
-							float Force_pressure = Volume * (particles->sorted_pres_d[index] + particles->sorted_pres_d[j])/2 * Spiky(Spiky_constant, dis);
+							float Force_pressure = Volume * (sorted_pres_d[index] + sorted_pres_d[j])/2 * Spiky(Spiky_constant, dis);
 
-							particles->sortedAcc_d[index] -= Distance * Force_pressure / dis;
+							sortedAcc_d[index] -= Distance * Force_pressure / dis;
 
 							/// Calculates the relative velocity (vj - vi), and then multiplies it to the mu, volume, and viscosity kernel. Eq.14
 							// m3Vector RelativeVel = np->corrected_vel - p->corrected_vel;
 
-							m3Vector RelativeVel = particles->sorted_int_vel_d[j] - particles->sorted_int_vel_d[index];
+							m3Vector RelativeVel = sorted_int_vel_d[j] - sorted_int_vel_d[index];
 							float Force_viscosity = Volume * mu * Visco(Spiky_constant, dis);
-							particles->sortedAcc_d[index] += RelativeVel * Force_viscosity;
+							sortedAcc_d[index] += RelativeVel * Force_viscosity;
 
 							/// Calculates the intermediate voltage needed for the monodomain model
-							particles->sorted_Inter_Vm_d[index] += (particles->sorted_Vm_d[j] - particles->sorted_Vm_d[index]) * Volume * B_spline_2(B_spline_constant, dis);
+							sorted_Inter_Vm_d[index] += (sorted_Vm_d[j] - sorted_Vm_d[index]) * Volume * B_spline_2(B_spline_constant, dis);
 						}
 					}
 				}
@@ -365,30 +378,30 @@ __global__ void Compute_ForceD(Particles *particles, uint *m_dGridParticleIndex,
 
 		/// Sum of the forces that make up the fluid, Eq.8
 
-		particles->sortedAcc_d[index] = particles->sortedAcc_d[index] / particles->sorted_dens_d[index];
+		sortedAcc_d[index] = sortedAcc_d[index] / sorted_dens_d[index];
 
 		/// Adding the currents, and time integration for the intermediate voltage
-		particles->sorted_Inter_Vm_d[index] += (sigma / (Beta*Cm)) + particles->sorted_Inter_Vm_d[index] - ((particles->sorted_Iion_d[index]- particles->sorted_stim_d[index] * Time_Delta / particles->sortedMass_d[index]) / Cm);
+		sorted_Inter_Vm_d[index] += (sigma / (Beta*Cm)) + sorted_Inter_Vm_d[index] - ((sorted_Iion_d[index]- sorted_stim_d[index] * Time_Delta / sortedMass_d[index]) / Cm);
 
 		uint originalIndex = m_dGridParticleIndex[index];
 
-		particles->pos_d[originalIndex] = particles->sortedPos_d[index];
-		particles->vel_d[originalIndex] = particles->sortedVel_d[index];
-		particles->predicted_vel_d[originalIndex] = particles->sorted_pred_vel_d[index];
-		particles->inter_vel_d[originalIndex] = particles->sorted_int_vel_d[index];
-		particles->corrected_vel_d[originalIndex] = particles->sorted_corr_vel_d[index];
-		particles->acc_d[originalIndex] = particles->sortedAcc_d[index];
-		particles->mass_d[originalIndex] = particles->sortedMass_d[index];
-		particles->mOriginalPos_d[originalIndex] = particles->sorted_mOriginalPos_d[index];
-		particles->mGoalPos_d[originalIndex] = particles->sorted_mGoalPos_d[index];
-		particles->mFixed_d[originalIndex] = particles->sorted_mFixed_d[index];
-		particles->dens_d[originalIndex] = particles->sorted_dens_d[index];
-		particles->pres_d[originalIndex] = particles->sorted_pres_d[index];
-		particles->Vm_d[originalIndex] = particles->sorted_Vm_d[index];
-		particles->Inter_Vm_d[originalIndex] = particles->sorted_Inter_Vm_d[index];
-		particles->Iion_d[originalIndex] = particles->sorted_Iion_d[index];
-		particles->stim_d[originalIndex] = particles->sorted_stim_d[index];
-		particles->w_d[originalIndex] = particles->sorted_w_d[index];
+		pos_d[originalIndex] = sortedPos_d[index];
+		vel_d[originalIndex] = sortedVel_d[index];
+		// predicted_vel_d[originalIndex] = sorted_pred_vel_d[index];
+		inter_vel_d[originalIndex] = sorted_int_vel_d[index];
+		// corrected_vel_d[originalIndex] = sorted_corr_vel_d[index];
+		acc_d[originalIndex] = sortedAcc_d[index];
+		mass_d[originalIndex] = sortedMass_d[index];
+		// mOriginalPos_d[originalIndex] = sorted_mOriginalPos_d[index];
+		// mGoalPos_d[originalIndex] = sorted_mGoalPos_d[index];
+		// mFixed_d[originalIndex] = sorted_mFixed_d[index];
+		dens_d[originalIndex] = sorted_dens_d[index];
+		pres_d[originalIndex] = sorted_pres_d[index];
+		Vm_d[originalIndex] = sorted_Vm_d[index];
+		Inter_Vm_d[originalIndex] = sorted_Inter_Vm_d[index];
+		Iion_d[originalIndex] = sorted_Iion_d[index];
+		stim_d[originalIndex] = sorted_stim_d[index];
+		w_d[originalIndex] = sorted_w_d[index];
 	// }
 }
 
@@ -415,7 +428,16 @@ __global__ void calculate_cell_modelD(m3Real *Iion_d, m3Real *w_d, m3Real *mass_
 
 /// Time integration as in 2016 - Fluid simulation by the SPH Method, a survey.
 /// Eq.13 and Eq.14
-__global__ void Update_PropertiesD(Particles *particles, m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
+__global__ void Update_PropertiesD(
+	m3Vector *pos_d,
+	m3Vector *vel_d,
+	m3Vector *inter_vel_d,
+	m3Vector *acc_d,
+	m3Real *mass_d,
+	m3Real *Vm_d,
+	m3Real *Inter_Vm_d,
+	bool *mFixed_d,
+	m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -423,50 +445,50 @@ __global__ void Update_PropertiesD(Particles *particles, m3Bounds bounds, m3Vect
 	// {
 		// p = &Particles[i];
 
-		if(!particles->mFixed_d[index])
+		if(!mFixed_d[index])
 		{
-			particles->vel_d[index] = particles->inter_vel_d[index] + (particles->acc_d[index]*Time_Delta/particles->mass_d[index]);
-			particles->pos_d[index] = particles->pos_d[index] + (particles->vel_d[index]*Time_Delta);
+			vel_d[index] = inter_vel_d[index] + (acc_d[index]*Time_Delta/mass_d[index]);
+			pos_d[index] = pos_d[index] + (vel_d[index]*Time_Delta);
 		}
 
-		particles->Vm_d[index] += particles->Inter_Vm_d[index] * Time_Delta / particles->mass_d[index];
-		if(particles->Vm_d[index] > max_voltage)
-			particles->Vm_d[index] = max_voltage;
-		else if(particles->Vm_d[index] < -max_voltage)
-			particles->Vm_d[index] = -max_voltage;
+		Vm_d[index] += Inter_Vm_d[index] * Time_Delta / mass_d[index];
+		if(Vm_d[index] > max_voltage)
+			Vm_d[index] = max_voltage;
+		else if(Vm_d[index] < -max_voltage)
+			Vm_d[index] = -max_voltage;
 
-		if(particles->pos_d[index].x < 0.0f)
+		if(pos_d[index].x < 0.0f)
 		{
-			particles->vel_d[index].x = particles->vel_d[index].x * Wall_Hit;
-			particles->pos_d[index].x = 0.0f;
+			vel_d[index].x = vel_d[index].x * Wall_Hit;
+			pos_d[index].x = 0.0f;
 		}
-		if(particles->pos_d[index].x >= World_Size.x)
+		if(pos_d[index].x >= World_Size.x)
 		{
-			particles->vel_d[index].x = particles->vel_d[index].x * Wall_Hit;
-			particles->pos_d[index].x = World_Size.x - 0.0001f;
+			vel_d[index].x = vel_d[index].x * Wall_Hit;
+			pos_d[index].x = World_Size.x - 0.0001f;
 		}
-		if(particles->pos_d[index].y < 0.0f)
+		if(pos_d[index].y < 0.0f)
 		{
-			particles->vel_d[index].y = particles->vel_d[index].y * Wall_Hit;
-			particles->pos_d[index].y = 0.0f;
+			vel_d[index].y = vel_d[index].y * Wall_Hit;
+			pos_d[index].y = 0.0f;
 		}
-		if(particles->pos_d[index].y >= World_Size.y)
+		if(pos_d[index].y >= World_Size.y)
 		{
-			particles->vel_d[index].y = particles->vel_d[index].y * Wall_Hit;
-			particles->pos_d[index].y = World_Size.y - 0.0001f;
+			vel_d[index].y = vel_d[index].y * Wall_Hit;
+			pos_d[index].y = World_Size.y - 0.0001f;
 		}
-		if(particles->pos_d[index].z < 0.0f)
+		if(pos_d[index].z < 0.0f)
 		{
-			particles->vel_d[index].z = particles->vel_d[index].z * Wall_Hit;
-			particles->pos_d[index].z = 0.0f;
+			vel_d[index].z = vel_d[index].z * Wall_Hit;
+			pos_d[index].z = 0.0f;
 		}
-		if(particles->pos_d[index].z >= World_Size.z)
+		if(pos_d[index].z >= World_Size.z)
 		{
-			particles->vel_d[index].z = particles->vel_d[index].z * Wall_Hit;
-			particles->pos_d[index].z = World_Size.z - 0.0001f;
+			vel_d[index].z = vel_d[index].z * Wall_Hit;
+			pos_d[index].z = World_Size.z - 0.0001f;
 		}
 
-		bounds.clamp(particles->pos_d[index]);
+		bounds.clamp(pos_d[index]);
 	// }
 }
 
@@ -510,8 +532,7 @@ __global__ void calculate_intermediate_velocityD(
 						m3Vector Distance;
 						Distance = sortedPos_d[index] - sortedPos_d[j];
 						m3Real dis2 = Distance.x * Distance.x + Distance.y * Distance.y + Distance.z * Distance.z;
-						// partial_velocity += (sorted_corr_vel_d[j] - sorted_corr_vel_d[index]) * Poly6(Poly6_constant, dis2) * (sortedMass_d[j] / sorted_dens_d[j]);
-						partial_velocity += sorted_corr_vel_d[0];
+						partial_velocity += (sorted_corr_vel_d[j] - sorted_corr_vel_d[index]) * Poly6(Poly6_constant, dis2) * (sortedMass_d[j] / sorted_dens_d[j]);
 					}
 				}
 			}

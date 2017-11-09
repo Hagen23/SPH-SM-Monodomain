@@ -134,7 +134,7 @@ void readCloudFromFile(const char* filename, vector<m3Vector>* points)
 {
 	FILE *ifp;
 	float x, y, z;
-	int aux = 0;
+	int aux = 0, num_particles = 0;
 
 	if ((ifp = fopen(filename, "r")) == NULL)
 	{
@@ -144,6 +144,7 @@ void readCloudFromFile(const char* filename, vector<m3Vector>* points)
 
 	while ((aux = fscanf(ifp, "%f,%f,%f\n", &x, &y, &z)) != EOF)
 	{
+		if(num_particles++%5 == 0)
 		if (aux == 3)
 			points->push_back(m3Vector(x,y,z));
 	}
@@ -174,7 +175,7 @@ void display_points()
 		glBegin(GL_POINTS);
 		for(int i=0; i<sph->Get_Particle_Number(); i++)
 		{
-			color Voltage_color = set_color(p->Vm[i] * sph->voltage_constant, -200.0f, sph->max_voltage);
+			color Voltage_color = set_color(p->Vm[i] * sph->voltage_constant, -sph->max_voltage, sph->max_voltage);
 			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
 			glVertex3f(p->pos[i].x, p->pos[i].y, p->pos[i].z);
 		}
