@@ -65,14 +65,14 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	volumeConservation = true;
 	allowFlip = true;
 
-	cout<<"SPHSystem"<<endl;
-	cout<<"Grid_Size_X : " << Grid_Size.x << endl;
-	cout<<"Grid_Size_Y : " << Grid_Size.y << endl;
-	cout<<"Grid_Size_Z : " << Grid_Size.y << endl;
-	cout<<"Alpha :" << alpha << " Beta :" << beta << endl;
-	cout<<"Volume conservation :" << volumeConservation << " Quadratic match : "<<quadraticMatch << endl;
-	cout<<"Cell Number : "<<Number_Cells<<endl;
-	cout<<"Time Delta : "<<Time_Delta<<endl;
+	// cout<<"SPHSystem"<<endl;
+	// cout<<"Grid_Size_X : " << Grid_Size.x << endl;
+	// cout<<"Grid_Size_Y : " << Grid_Size.y << endl;
+	// cout<<"Grid_Size_Z : " << Grid_Size.y << endl;
+	// cout<<"Alpha :" << alpha << " Beta :" << beta << endl;
+	// cout<<"Volume conservation :" << volumeConservation << " Quadratic match : "<<quadraticMatch << endl;
+	// cout<<"Cell Number : "<<Number_Cells<<endl;
+	// cout<<"Time Delta : "<<Time_Delta<<endl;
 }
 
 SPH_SM_monodomain::~SPH_SM_monodomain()
@@ -84,7 +84,7 @@ SPH_SM_monodomain::~SPH_SM_monodomain()
 void SPH_SM_monodomain::add_viscosity(float value)
 {
 	mu += (mu + value) >= 0 ? value : 0;
-	cout << "Viscosity: " << mu  << endl;
+	// cout << "Viscosity: " << mu  << endl;
 }
 
 void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
@@ -92,7 +92,7 @@ void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
 	for(m3Vector pos : positions)
 		Init_Particle(pos, m3Vector(0.f, 0.f, 0.f));
 
-	cout<<"Number of Paticles : "<<Number_Particles<<endl;
+	// cout<<"Number of Paticles : "<<Number_Particles<<endl;
 }
 
 void SPH_SM_monodomain::Init_Particle(m3Vector pos, m3Vector vel)
@@ -728,7 +728,7 @@ void SPH_SM_monodomain::turnOnStim_Cube(std::vector<m3Vector> positions)
 			p->mFixed = true;
 	}
 
-	cout<<"Particles stimulated."<<endl;
+	// cout<<"Particles stimulated."<<endl;
 }
 
 void SPH_SM_monodomain::turnOnStim_Mesh(std::vector<m3Vector> positions)
@@ -765,7 +765,7 @@ void SPH_SM_monodomain::turnOffStim()
 
 void SPH_SM_monodomain::print_report(double avg_fps, double avg_step_d)
 {
-	cout << "Avg FPS ; Avg Step Duration ; Time Steps ; Find neighbors ; Corrected Velocity ; Intermediate Velocity ; Density-Pressure ; Cell model ; Compute Force ; Update Properties ; K ; Alpha ; Beta ; Mu ; sigma ; Stim strength ; FH_VT ; FH_VP ; FH_VR ; C1 ; C2 ; C3 ; C4" << endl;
+	// cout << "Avg FPS ; Avg Step Duration ; Time Steps ; Find neighbors ; Corrected Velocity ; Intermediate Velocity ; Density-Pressure ; Cell model ; Compute Force ; Update Properties ; K ; Alpha ; Beta ; Mu ; sigma ; Stim strength ; FH_VT ; FH_VP ; FH_VR ; C1 ; C2 ; C3 ; C4" << endl;
 	
 	cout << avg_fps << ";" << avg_step_d << ";" << total_time_steps << ";" << d_find_neighbors.count() / total_time_steps << ";" << d_corrected_velocity.count() / total_time_steps << ";" << d_intermediate_velocity.count() / total_time_steps << ";" << d_Density_SingPressure.count() / total_time_steps << ";" << d_cell_model.count() / total_time_steps << ";" << d_compute_Force.count() / total_time_steps << ";" << d_Update_Properties.count() / total_time_steps << ";";
 
