@@ -365,7 +365,7 @@ __global__ void Compute_ForceD(
 
 							float Force_pressure = Volume * (sorted_pres_d[index] + sorted_pres_d[j])/2 * Spiky(Spiky_constant, dis);
 
-							printf("Spiky %d -- %f \n", j, Spiky(Spiky_constant, dis));
+							printf("Force %f mass %f dens %f Volume %f sorted %f Spiky(Spiky_constant, dis) %d -- %f \n", Force_pressure, sortedMass_d[j], sorted_dens_d[j], Volume, (sorted_pres_d[index] + sorted_pres_d[j])/2, j, Spiky(Spiky_constant, dis));
 
 							sortedAcc_d[index] -= Distance * Force_pressure / dis;
 

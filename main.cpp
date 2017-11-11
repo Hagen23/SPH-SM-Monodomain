@@ -144,7 +144,7 @@ void readCloudFromFile(const char* filename, vector<m3Vector>* points)
 
 	while ((aux = fscanf(ifp, "%f,%f,%f\n", &x, &y, &z)) != EOF)
 	{
-		if(num_particles++%5 == 0)
+		if(num_particles++%10 == 0)
 		if (aux == 3)
 			points->push_back(m3Vector(x,y,z));
 	}

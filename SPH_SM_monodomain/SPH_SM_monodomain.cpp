@@ -14,7 +14,7 @@ using namespace std;
 
 SPH_SM_monodomain::SPH_SM_monodomain()
 {
-	kernel = 0.045f;
+	kernel = 0.03f;
 
 	Max_Number_Paticles = 50000;
 	total_time_steps = 0;
@@ -30,7 +30,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	
 	World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 
-	Cell_Size = 0.09;
+	Cell_Size = 0.06;
 	Grid_Size = World_Size / Cell_Size;
 	Grid_Size.x = (int)Grid_Size.x;
 	Grid_Size.y = (int)Grid_Size.y;
@@ -45,7 +45,9 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	velocity_mixing = 1.0f;
 
 	Poly6_constant = 315.0f/(64.0f * m3Pi * pow(kernel, 9));
-	Spiky_constant = 45.0f/(m3Pi * pow(kernel, 6));
+	Spiky_constant = 45.0f/(m3Pi * pow(kernel, 3));
+
+	cout << "Spiky_constant " << Spiky_constant << endl;
 	B_spline_constant = 1.0f / (m3Pi*kernel*kernel*kernel);
 
 	/// Time step is calculated as in 2016 - Divergence-Free SPH for Incompressible and Viscous Fluids.
