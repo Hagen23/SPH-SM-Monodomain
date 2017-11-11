@@ -153,6 +153,7 @@ void reorderDataAndFindCellStartD(
 	m3Vector *sortedVel_d, m3Vector *vel_d,
 	m3Vector *sorted_corr_vel_d, m3Vector *corrected_vel_d,
 	m3Vector *sortedAcc_d, m3Vector *acc_d,
+	m3Vector *sorted_int_vel_d, m3Vector *inter_vel_d,
 	m3Real *sortedMass_d, m3Real *mass_d,
 	bool *sorted_mFixed_d, bool *mFixed_d,
 	m3Real *sorted_dens_d, m3Real *dens_d,
@@ -216,7 +217,7 @@ void reorderDataAndFindCellStartD(
 		sortedPos_d[index] = pos_d[sortedIndex];
 		sortedVel_d[index] = vel_d[sortedIndex];
 		// sorted_pred_vel_d[index] = predicted_vel_d[sortedIndex];
-		// sorted_int_vel_d[index] = inter_vel_d[sortedIndex];
+		sorted_int_vel_d[index] = inter_vel_d[sortedIndex];
 		sorted_corr_vel_d[index] = corrected_vel_d[sortedIndex];
 		sortedAcc_d[index] = acc_d[sortedIndex];
 		sortedMass_d[index] = mass_d[sortedIndex];
@@ -249,6 +250,8 @@ __global__ void Compute_Density_SingPressureD(
 
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
+	if(index < m_numParticles)
+	{
 		sorted_dens_d[index] = 0.f;
 		sorted_pres_d[index] = 0.f;
 		
@@ -296,7 +299,7 @@ __global__ void Compute_Density_SingPressureD(
 			sorted_pres_d[index] = -max_pressure;
 		else if(sorted_pres_d[index] > max_pressure)
 			sorted_pres_d[index] = max_pressure;
-	// }
+	}
 }
 
 __global__ void Compute_ForceD(
@@ -323,7 +326,9 @@ __global__ void Compute_ForceD(
 	// for(int k = 0; k < Number_Particles; k++)
 	// {
 		// p = &Particles[k];
-
+	if(index < m_numParticles)
+	{
+		// printf("sorted dens %d -- %f \n", index, sorted_pres_d[index]);
 		sortedAcc_d[index] = m3Vector(0.0f, 0.0f, 0.0f);
 		sorted_Inter_Vm_d[index] = 0.0f;
 
@@ -357,7 +362,10 @@ __global__ void Compute_ForceD(
 							/// Calculates the force of pressure, Eq.10
 							float Volume = sortedMass_d[j] / sorted_dens_d[j];
 							// float Force_pressure = Volume * (p->pres+np->pres)/2 * B_spline_1(dis);
+
 							float Force_pressure = Volume * (sorted_pres_d[index] + sorted_pres_d[j])/2 * Spiky(Spiky_constant, dis);
+
+							printf("Spiky %d -- %f \n", j, Spiky(Spiky_constant, dis));
 
 							sortedAcc_d[index] -= Distance * Force_pressure / dis;
 
@@ -379,6 +387,8 @@ __global__ void Compute_ForceD(
 		/// Sum of the forces that make up the fluid, Eq.8
 
 		sortedAcc_d[index] = sortedAcc_d[index] / sorted_dens_d[index];
+
+		// printf("sorted acc %d -- %f %f %f \n", index, sortedAcc_d[index].x, sortedAcc_d[index].y, sortedAcc_d[index].z);	
 
 		/// Adding the currents, and time integration for the intermediate voltage
 		sorted_Inter_Vm_d[index] += (sigma / (Beta*Cm)) + sorted_Inter_Vm_d[index] - ((sorted_Iion_d[index]- sorted_stim_d[index] * Time_Delta / sortedMass_d[index]) / Cm);
@@ -402,27 +412,25 @@ __global__ void Compute_ForceD(
 		Iion_d[originalIndex] = sorted_Iion_d[index];
 		stim_d[originalIndex] = sorted_stim_d[index];
 		w_d[originalIndex] = sorted_w_d[index];
-	// }
+	}
 }
 
-__global__ void calculate_cell_modelD(m3Real *Iion_d, m3Real *w_d, m3Real *mass_d, m3Real *Vm_d, m3Real Time_Delta)
+__global__ void calculate_cell_modelD(m3Real *Iion_d, m3Real *w_d, m3Real *mass_d, m3Real *Vm_d, m3Real Time_Delta, int m_numParticles)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	m3Real denom = (FH_Vp - FH_Vr);
-	m3Real asd = (FH_Vt - FH_Vr)/denom;
-	m3Real u = 0.0;
-
-	// for(int k = 0; k < Number_Particles; k++)
-	// {
-		// p = &Particles[k];
+	if(index < m_numParticles)
+	{
+		m3Real denom = (FH_Vp - FH_Vr);
+		m3Real asd = (FH_Vt - FH_Vr)/denom;
+		m3Real u = 0.0;
 
 		u = (Vm_d[index] - FH_Vr) / denom;
 
 		Iion_d[index] += Time_Delta * (C1*u*(u - asd)*(u - 1.0) + C2* w_d[index]) / mass_d[index];
 		
 		w_d[index] += Time_Delta * C3*(u - C4*w_d[index]) / mass_d[index];
-	// }
+	}
 }
 
 
@@ -437,59 +445,64 @@ __global__ void Update_PropertiesD(
 	m3Real *Vm_d,
 	m3Real *Inter_Vm_d,
 	bool *mFixed_d,
-	m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta)
+	m3Bounds bounds, m3Vector World_Size, m3Real Time_Delta, int Number_Particles)
 {
 	uint index = blockIdx.x * blockDim.x + threadIdx.x;
-
+	// printf("%d ", index);
 	// for(int i=0; i < Number_Particles; i++)
 	// {
 		// p = &Particles[i];
 
-		if(!mFixed_d[index])
+		if(index < Number_Particles)
 		{
-			vel_d[index] = inter_vel_d[index] + (acc_d[index]*Time_Delta/mass_d[index]);
-			pos_d[index] = pos_d[index] + (vel_d[index]*Time_Delta);
-		}
+		// 	printf("%d -- %f %f %f \n", index, pos_d[index].x, pos_d[index].y, pos_d[index].z);
+			if(!mFixed_d[index])
+			{	
+				// printf("%d -- %f %f %f mfixed %d\n", index, inter_vel_d[index].x, inter_vel_d[index].y, inter_vel_d[index].z, mFixed_d[index]);
+				vel_d[index] = inter_vel_d[index] + (acc_d[index]*Time_Delta/mass_d[index]);
+				pos_d[index] = pos_d[index] + (vel_d[index]*Time_Delta);
+				// printf("%d -- %f %f %f mfixed %d\n", index, pos_d[index].x, pos_d[index].y, pos_d[index].z, mFixed_d[index]);
+			}
 
-		Vm_d[index] += Inter_Vm_d[index] * Time_Delta / mass_d[index];
-		if(Vm_d[index] > max_voltage)
-			Vm_d[index] = max_voltage;
-		else if(Vm_d[index] < -max_voltage)
-			Vm_d[index] = -max_voltage;
+			Vm_d[index] += Inter_Vm_d[index] * Time_Delta / mass_d[index];
+			if(Vm_d[index] > max_voltage)
+				Vm_d[index] = max_voltage;
+			else if(Vm_d[index] < -max_voltage)
+				Vm_d[index] = -max_voltage;
 
-		if(pos_d[index].x < 0.0f)
-		{
-			vel_d[index].x = vel_d[index].x * Wall_Hit;
-			pos_d[index].x = 0.0f;
-		}
-		if(pos_d[index].x >= World_Size.x)
-		{
-			vel_d[index].x = vel_d[index].x * Wall_Hit;
-			pos_d[index].x = World_Size.x - 0.0001f;
-		}
-		if(pos_d[index].y < 0.0f)
-		{
-			vel_d[index].y = vel_d[index].y * Wall_Hit;
-			pos_d[index].y = 0.0f;
-		}
-		if(pos_d[index].y >= World_Size.y)
-		{
-			vel_d[index].y = vel_d[index].y * Wall_Hit;
-			pos_d[index].y = World_Size.y - 0.0001f;
-		}
-		if(pos_d[index].z < 0.0f)
-		{
-			vel_d[index].z = vel_d[index].z * Wall_Hit;
-			pos_d[index].z = 0.0f;
-		}
-		if(pos_d[index].z >= World_Size.z)
-		{
-			vel_d[index].z = vel_d[index].z * Wall_Hit;
-			pos_d[index].z = World_Size.z - 0.0001f;
-		}
+			if(pos_d[index].x < 0.0f)
+			{
+				vel_d[index].x = vel_d[index].x * Wall_Hit;
+				pos_d[index].x = 0.0f;
+			}
+			if(pos_d[index].x >= World_Size.x)
+			{
+				vel_d[index].x = vel_d[index].x * Wall_Hit;
+				pos_d[index].x = World_Size.x - 0.0001f;
+			}
+			if(pos_d[index].y < 0.0f)
+			{
+				vel_d[index].y = vel_d[index].y * Wall_Hit;
+				pos_d[index].y = 0.0f;
+			}
+			if(pos_d[index].y >= World_Size.y)
+			{
+				vel_d[index].y = vel_d[index].y * Wall_Hit;
+				pos_d[index].y = World_Size.y - 0.0001f;
+			}
+			if(pos_d[index].z < 0.0f)
+			{
+				vel_d[index].z = vel_d[index].z * Wall_Hit;
+				pos_d[index].z = 0.0f;
+			}
+			if(pos_d[index].z >= World_Size.z)
+			{
+				vel_d[index].z = vel_d[index].z * Wall_Hit;
+				pos_d[index].z = World_Size.z - 0.0001f;
+			}
 
-		bounds.clamp(pos_d[index]);
-	// }
+			bounds.clamp(pos_d[index]);
+		}
 }
 
 __global__ void calculate_intermediate_velocityD(
@@ -506,9 +519,9 @@ __global__ void calculate_intermediate_velocityD(
 	m3Vector NeighborPos;
 	int hash;
 
-	// for(int k = 0; k < Number_Particles; k++)
-	// {
-		// p = &Particles[k];
+	if(index < m_numParticles)
+	{
+		// printf("sorted dens %d -- %f \n", sorted_dens_d[index]);
 		CellPos = Calculate_Cell_Position(sortedPos_d[index], Cell_Size);
 		m3Vector partial_velocity(0.0f, 0.0f, 0.0f);
 
@@ -538,7 +551,7 @@ __global__ void calculate_intermediate_velocityD(
 			}
 		}
 		sorted_int_vel_d[index] = sorted_corr_vel_d[index] + partial_velocity * velocity_mixing;
-	// }
+	}
 }
 // }
 #endif

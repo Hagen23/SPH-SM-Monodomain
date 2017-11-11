@@ -98,160 +98,10 @@ void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
 	checkCudaErrors(cudaMalloc((void**)&dGridParticleIndex, sizeof(uint)*Number_Particles));
 	checkCudaErrors(cudaMalloc((void**)&dCellStart, sizeof(uint)*Number_Cells));
 	checkCudaErrors(cudaMalloc((void**)&dCellEnd, sizeof(uint)*Number_Cells));
+
+	checkCudaErrors(cudaMemset(dGridParticleHash, 0, Number_Particles*sizeof(uint)));
+	checkCudaErrors(cudaMemset(dGridParticleIndex, 0, Number_Particles*sizeof(uint)));
 }
-
-// void SPH_SM_monodomain::Init_Particle(m3Vector pos, m3Vector vel)
-// {
-// 	if(Number_Particles + 1 > Max_Number_Paticles)
-// 		return;
-
-// 	Particles *p = &(Particles[Number_Particles]);
-	
-// 	p->pos = pos;
-// 	p->mOriginalPos = pos;
-// 	p->mGoalPos = pos;
-// 	p->mFixed = false;
-
-// 	p->vel = vel;
-// 	p->acc = m3Vector(0.0f, 0.0f, 0.0f);
-// 	p->dens = Stand_Density;
-// 	p->mass = 0.2f;
-
-// 	p->Inter_Vm = 0.0f;
-// 	p->Vm = 0.0f;
-// 	p->Iion = 0.0f;
-// 	p->stim = 0.0f;
-// 	p->w = 0.0f;
-
-// 	Number_Particles++;
-// }
-
-// extern "C"
-// {
-// 	/// Calculates the cell position for each particle
-// 	void SPH_SM_monodomain::calcHash(uint *gridParticleHash, uint * gridParticleIndex, m3Vector *pos, int numberParticles)
-// 	{
-// 		uint numThreads, numBlocks;
-// 		computeGridSize(numberParticles, 256, numBlocks, numThreads);
-
-// 		calcHashD<<< numBlocks, numThreads >>>(gridParticleHash, gridParticleIndex, pos, Cell_Size, Grid_Size, numberParticles);
-
-// 		// check if kernel invocation generated an error
-// 		getLastCudaError("Kernel execution failed");
-// 	}
-
-// 	/// Sorts the hashes and indices
-// 	void SPH_SM_monodomain::sortParticles(uint *dGridParticleHash, uint *dGridParticleIndex, uint numberParticles)
-// 	{
-// 		thrust::sort_by_key(thrust::device_ptr<uint>(dGridParticleHash), 
-// 			thrust::device_ptr<uint>(dGridParticleHash + numberParticles), 
-// 			thrust::device_ptr<uint>(dGridParticleIndex));
-// 	}
-
-// 	/// Reorders the particles based on the hashes and indices. Also finds the start and end cells.
-// 	void SPH_SM_monodomain::reorderDataAndFindCellStart(Particles *p, uint *cellStart, uint *cellEnd, uint *gridParticleHash, uint *gridParticleIndex, uint numParticles, uint numCells)
-// 	{
-// 		uint numThreads, numBlocks;
-// 		computeGridSize(numParticles, 256, numBlocks, numThreads);
-
-// 		// set all cells to empty
-// 		checkCudaErrors(cudaMemset(cellStart, 0xffffffff, numCells*sizeof(uint)));
-
-// 		uint smemSize = sizeof(uint)*(numThreads+1);
-// 		reorderDataAndFindCellStartD<<< numBlocks, numThreads, smemSize>>>(p, cellStart, cellEnd, gridParticleHash, gridParticleIndex,     numParticles);
-
-// 		getLastCudaError("Kernel execution failed: reorderDataAndFindCellStartD");
-// 	}
-
-// 	void SPH_SM_monodomain::calculate_cell_model()
-// 	{
-// 		uint numThreads, numBlocks;
-// 		computeGridSize(Number_Particles, 256, numBlocks, numThreads);
-
-// 		calculate_cell_modelD<<<numBlocks, numThreads>>>(particles, Time_Delta);
-
-// 		getLastCudaError("Kernel execution failed: calculate_cell_model");
-// 	}
-
-// 	void SPH_SM_monodomain::calculate_intermediate_velocity()
-// 	{
-// 		uint numThreads, numBlocks;
-// 		computeGridSize(Number_Particles, 256, numBlocks, numThreads);
-
-// 		calculate_intermediate_velocityD<<<numBlocks, numThreads>>>(particles, dGridParticleIndex, dCellStart, dCellEnd, Number_Particles, Number_Cells, Cell_Size, Grid_Size, Poly6_constant);
-
-// 		getLastCudaError("Kernel execution failed: calculate_intermediate_velocityD");
-// 	}
-
-// 	void SPH_SM_monodomain::compute_SPH_SM_monodomain()
-// 	{
-// 		calculate_corrected_velocity();
-
-// 		unsigned int memSize = sizeof(m3Vector)*Number_Particles;
-
-// 		checkCudaErrors(cudaMemcpy(particles->pos_d, particles->pos, memSize, cudaMemcpyHostToDevice));
-// 		checkCudaErrors(cudaMemcpy(particles->corrected_vel_d, particles->corrected_vel, memSize, cudaMemcpyHostToDevice));
-
-// 		calculate_cell_model();
-
-// 		calcHash(dGridParticleHash, dGridParticleIndex, particles->pos_d, Number_Particles);
-
-// 		sortParticles(dGridParticleHash, dGridParticleIndex, Number_Particles);
-
-// 		reorderDataAndFindCellStart(particles, dCellStart, dCellEnd, dGridParticleHash, dGridParticleIndex, Number_Particles, Number_Cells);
-
-// 		calculate_intermediate_velocity();
-// 		// tpoint tstart = std::chrono::system_clock::now();
-// 		// Find_neighbors();
-// 		// d_find_neighbors += std::chrono::system_clock::now() - tstart;
-
-// 		// tstart = std::chrono::system_clock::now();
-// 		// calculate_corrected_velocity();
-// 		// d_corrected_velocity += std::chrono::system_clock::now() - tstart;
-		
-// 		// tstart = std::chrono::system_clock::now();
-// 		// calculate_intermediate_velocity();
-// 		// d_intermediate_velocity += std::chrono::system_clock::now() - tstart;
-		
-// 		// tstart = std::chrono::system_clock::now();
-// 		// Compute_Density_SingPressure();
-// 		// d_Density_SingPressure += std::chrono::system_clock::now() - tstart;
-		
-// 		// tstart = std::chrono::system_clock::now();
-// 		// calculate_cell_model();
-// 		// d_cell_model += std::chrono::system_clock::now() - tstart;
-
-// 		// tstart = std::chrono::system_clock::now();
-// 		// Compute_Force();
-// 		// d_compute_Force += std::chrono::system_clock::now() - tstart;
-
-// 		// tstart = std::chrono::system_clock::now();
-// 		// Update_Properties();
-// 		// d_Update_Properties += std::chrono::system_clock::now() - tstart;
-
-// 		total_time_steps++;
-// 	}
-
-// 	void SPH_SM_monodomain::Animation()
-// 	{
-// 		compute_SPH_SM_monodomain();
-// 	}
-// }
-// void SPH_SM_monodomain::Find_neighbors()
-// {
-// 	int hash;
-// 	Particle *p;
-
-// 	for(int i = 0; i < Number_Cells; i++)
-// 		Cells[i].contained_particles.clear();
-
-// 	for(int i = 0; i < Number_Particles; i ++)
-// 	{
-// 		p = &Particles[i];
-// 		hash = Calculate_Cell_Hash(Calculate_Cell_Position(pp->pos, Cell_Size));
-// 		Cells[hash].contained_particles.push_back(p);
-// 	}
-// }
 
 void SPH_SM_monodomain::apply_external_forces(m3Vector* forcesArray = NULL, int* indexArray = NULL, int size = 0)
 {
@@ -611,6 +461,7 @@ void SPH_SM_monodomain::reorderDataAndFindCellStart(
 	m3Vector *sortedVel_d, m3Vector *vel_d,
 	m3Vector *sorted_corr_vel_d, m3Vector *corrected_vel_d,
 	m3Vector *sortedAcc_d, m3Vector *acc_d,
+	m3Vector *sorted_int_vel_d, m3Vector *inter_vel_d,
 	m3Real *sortedMass_d, m3Real *mass_d,
 	bool *sorted_mFixed_d, bool *mFixed_d,
 	m3Real *sorted_dens_d, m3Real *dens_d,
@@ -634,6 +485,7 @@ void SPH_SM_monodomain::reorderDataAndFindCellStart(
 		sortedVel_d, vel_d,
 		sorted_corr_vel_d, corrected_vel_d,
 		sortedAcc_d, acc_d,
+		sorted_int_vel_d, inter_vel_d,
 		sortedMass_d, mass_d,
 		sorted_mFixed_d, mFixed_d,
 		sorted_dens_d, dens_d,
@@ -654,7 +506,7 @@ void SPH_SM_monodomain::calculate_cell_model()
 	uint numThreads, numBlocks;
 	computeGridSize(Number_Particles, 256, numBlocks, numThreads);
 
-	calculate_cell_modelD<<<numBlocks, numThreads>>>(particles->Iion_d, particles->w_d, particles->mass_d, particles->Vm_d, Time_Delta);
+	calculate_cell_modelD<<<numBlocks, numThreads>>>(particles->Iion_d, particles->w_d, particles->mass_d, particles->Vm_d, Time_Delta, Number_Particles);
 
 	cudaDeviceSynchronize();
 	getLastCudaError("Kernel execution failed: calculate_cell_model");
@@ -733,8 +585,9 @@ void SPH_SM_monodomain::Update_Properties()
 		particles->Vm_d,
 		particles->Inter_Vm_d,
 		particles->mFixed_d,
-		bounds, World_Size, Time_Delta);
+		bounds, World_Size, Time_Delta, Number_Particles);
 
+	cout << "--------------------------" << endl << endl << endl;
 	cudaDeviceSynchronize();
 	getLastCudaError("Kernel execution failed: Update_PropertiesD");
 }
@@ -764,6 +617,7 @@ void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 		particles->sortedVel_d, particles->vel_d,
 		particles->sorted_corr_vel_d, particles->corrected_vel_d,
 		particles->sortedAcc_d, particles->acc_d,
+		particles->sorted_int_vel_d, particles->inter_vel_d,
 		particles->sortedMass_d, particles->mass_d,
 		particles->sorted_mFixed_d, particles->mFixed_d,
 		particles->sorted_dens_d, particles->dens_d,
@@ -787,7 +641,8 @@ void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 
 	checkCudaErrors(cudaMemcpy(particles->vel, particles->vel_d, sizeof(m3Vector) * Number_Particles, cudaMemcpyDeviceToHost));
 
-	
+	cout << endl << particles->pos[10].x << " " << particles->pos[10].y << " " << particles->pos[10].z<< endl;
+
 	// tpoint tstart = std::chrono::system_clock::now();
 	// Find_neighbors();
 	// d_find_neighbors += std::chrono::system_clock::now() - tstart;

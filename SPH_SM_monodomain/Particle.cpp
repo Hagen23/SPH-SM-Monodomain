@@ -34,6 +34,9 @@ void Particles::init_particles(std::vector<m3Vector> positions, float Stand_Dens
         mass[i] = 0.2f;
     }
 
+
+	// cout << pos[10].x << " " << pos[10].y << " " << pos[10].z<< endl;
+
     unsigned int memSize = sizeof(m3Vector)*Number_Particles;
 
     checkCudaErrors(cudaMalloc((void**)&pos_d, memSize));
@@ -72,7 +75,15 @@ void Particles::init_particles(std::vector<m3Vector> positions, float Stand_Dens
     checkCudaErrors(cudaMalloc((void**)&sorted_w_d, sizeof(m3Real)*Number_Particles));
 
     checkCudaErrors(cudaMemcpy(pos_d, pos, memSize, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(mass_d, mass, sizeof(m3Real) * Number_Particles, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(dens_d, dens, sizeof(m3Real) * Number_Particles, cudaMemcpyHostToDevice));
+
+    // checkCudaErrors(cudaMemcpy(pos, pos_d, memSize, cudaMemcpyDeviceToHost));
+
+	// cout << pos[10].x << " " << pos[10].y << " " << pos[10].z<< endl;
     // checkCudaErrors(cudaMemcpy(mOriginalPos_d, pos, memSize, cudaMemcpyHostToDevice));
     // checkCudaErrors(cudaMemcpy(mGoalPos_d, pos, memSize, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(mFixed_d, mFixed, sizeof(bool) * Number_Particles, cudaMemcpyHostToDevice));
+
+    cout << "Initialized particles" << endl;
 }

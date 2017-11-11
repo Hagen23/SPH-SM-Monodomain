@@ -128,6 +128,7 @@ class SPH_SM_monodomain
 		m3Vector *sortedVel_d, m3Vector *vel_d,
 		m3Vector *sorted_corr_vel_d, m3Vector *corrected_vel_d,
 		m3Vector *sortedAcc_d, m3Vector *acc_d,
+		m3Vector *sorted_int_vel_d, m3Vector *inter_vel_d,
 		m3Real *sortedMass_d, m3Real *mass_d,
 		bool *sorted_mFixed_d, bool *mFixed_d,
 		m3Real *sorted_dens_d, m3Real *dens_d,

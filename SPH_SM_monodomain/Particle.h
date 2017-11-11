@@ -6,6 +6,9 @@
 #include <vector>
 #include <helper_cuda.h>
 #include <cuda_runtime.h>
+#include <iostream>
+
+using namespace std;
 
 class Particles
 {
