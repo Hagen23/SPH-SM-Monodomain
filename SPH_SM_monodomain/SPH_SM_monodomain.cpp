@@ -12,31 +12,33 @@ using namespace std;
 
 SPH_SM_monodomain::SPH_SM_monodomain()
 {
-	kernel = 0.035f;
+	float sigma_i = 0.893, sigma_e = 0.67;
+
+	kernel = 0.04f;
 
 	Max_Number_Paticles = 50000;
 	total_time_steps = 0;
 	Number_Particles = 0;
 
-	Cm = 1.0;
-    Beta = 140;
+	Cm = 1.f;
+    Beta = 50;
 	isStimOn = false;
-	sigma = 1.0f;
-	stim_strength = 500000.0f;
+	sigma = sigma_i * sigma_e / ( sigma_i + sigma_e); //1.0f;
+	stim_strength = 800000.0f;
 	
 	World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 
-	Cell_Size = 0.04;
+	Cell_Size = 0.08;
 	Grid_Size = World_Size / Cell_Size;
-	Grid_Size.x = (int)Grid_Size.x;
-	Grid_Size.y = (int)Grid_Size.y;
-	Grid_Size.z = (int)Grid_Size.z;
+	Grid_Size.x = (int)ceil(Grid_Size.x);
+	Grid_Size.y = (int)ceil(Grid_Size.y);
+	Grid_Size.z = (int)ceil(Grid_Size.z);
 
 	Number_Cells = (int)Grid_Size.x * (int)Grid_Size.y * (int)Grid_Size.z;
 
 	Gravity.set(0.0f, -9.8f, 0.0f);
 	K = 0.8f;
-	Stand_Density = 5000.0f;
+	Stand_Density = 1112.0f;
 	max_vel = m3Vector(3.0f, 3.0f, 3.0f);
 	velocity_mixing = 1.0f;
 
@@ -485,7 +487,7 @@ void SPH_SM_monodomain::Compute_Density_SingPressure()
 		/// Testing if voltage can be used as a pressure
 		// if(isStimOn)
 			// m3Real inter_pressure_voltage = (p->Vm * voltage_constant);
-			p->pres -= (p->Vm * voltage_constant);
+			p->pres += (p->Vm * voltage_constant);
 
 			if(p->pres < -max_pressure)
 				p->pres = -max_pressure;
@@ -557,7 +559,7 @@ void SPH_SM_monodomain::Compute_Force()
 		p->acc = p->acc/p->dens;
 
 		/// Adding the currents, and time integration for the intermediate voltage
-		p->Inter_Vm += (sigma / (Beta * Cm)) * p->Inter_Vm - ((p->Iion - p->stim * Time_Delta / p->mass) / Cm);
+		p->Inter_Vm += (sigma / (Beta * Cm)) * p->Vm - ((p->Iion - p->stim * Time_Delta / p->mass) / Cm);
 	}
 }
 
@@ -713,7 +715,7 @@ void SPH_SM_monodomain::turnOnStim_Cube(std::vector<m3Vector> positions)
 	for(m3Vector pos : positions)
 	{
 		cm += pos;
-		if( (pos.x >= 0.3 && pos.x <= 0.33) || (pos.x > 0.6839 && pos.z <= 0.7f) )
+		if( (pos.x >= 0.45 && pos.x <= 0.48) || (pos.x > 1.0 && pos.z <= 1.05f) )
 			set_stim(pos, 0.001f, stim_strength);
 	}
 	cm /= Number_Particles;
@@ -724,7 +726,7 @@ void SPH_SM_monodomain::turnOnStim_Cube(std::vector<m3Vector> positions)
 	{
 		p = &Particles[k];
 		m3Vector position = p->pos;
-		if ((position.y == 0.0f && position.x == 0.3f) || (position.y == 0.0f && position.x >= 0.68399f))
+		if ((position.y == 0.0f && position.x <= 0.48f) || (position.y == 0.0f && position.x >= 1.0))
 			p->mFixed = true;
 	}
 

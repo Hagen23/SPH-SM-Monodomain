@@ -90,8 +90,8 @@ class SPH_SM_monodomain
 		~SPH_SM_monodomain();
 
 		m3Real voltage_constant = 50;
-		m3Real max_pressure = 100000;
-		m3Real max_voltage = 500;
+		m3Real max_pressure = 150000;
+		m3Real max_voltage = 2000;
 
 		// Variables to meassure time spent in each step
 		tpoint t_start_find_neighbors, t_start_corrected_velocity, t_start_intermediate_velocity, t_start_Density_SingPressure, t_start_cell_model, t_start_compute_Force, t_start_Update_Properties;
@@ -153,6 +153,18 @@ class SPH_SM_monodomain
 
 		inline bool flip_quadratic()	{ quadraticMatch = !quadraticMatch; return quadraticMatch; }
 		inline bool flip_volume()		{ volumeConservation = !volumeConservation; return volumeConservation; }
+
+		inline int pow2roundup (int v) 
+		{
+			v--;
+			v |= v >> 1;
+			v |= v >> 2;
+			v |= v >> 4;
+			v |= v >> 8;
+			v |= v >> 16;
+			v++;
+			return v;
+		}
 };
 
 
