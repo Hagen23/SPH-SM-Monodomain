@@ -138,7 +138,7 @@ void readCloudFromFile(const char* filename, vector<m3Vector>* points)
 
 	if ((ifp = fopen(filename, "r")) == NULL)
 	{
-		fprintf(stderr, "Can't open input file!\n");
+		// fprintf(stderr, "Can't open input file!\n");
 		return;
 	}
 
@@ -243,7 +243,7 @@ void idle(void)
 		if(time_steps == max_time_steps - max_time_steps / 2)
 		{
 			sph->turnOffStim();
-			cout << "Turning stimulation off" << endl;
+			// cout << "Turning stimulation off" << endl;
 		}
 
 		if(simulate)
@@ -256,7 +256,7 @@ void idle(void)
 	else if(time_steps == 0 && simulation_active)
 	{
 		simulation_active = false;		
-		cout << "Simulation end. Avg step duration: " << average_step_duration.count() / max_time_steps << endl;
+		// cout << "Simulation end. Avg step duration: " << average_step_duration.count() / max_time_steps << endl;
 
 		exit_simulation();
 	}
@@ -296,9 +296,9 @@ void motion(int x, int y)
 void exit_simulation()
 {
 	sph->print_report(average_fps / total_fps_counts, average_step_duration.count() / (max_time_steps - time_steps));
-	cout << "Average FPS: " << average_fps / total_fps_counts<< endl;
-	if(simulation_active)
-		cout << "Simulation stopped. Avg step duration: " << average_step_duration.count() / (max_time_steps - time_steps) << endl;
+	// cout << "Average FPS: " << average_fps / total_fps_counts<< endl;
+	// if(simulation_active)
+	// 	cout << "Simulation stopped. Avg step duration: " << average_step_duration.count() / (max_time_steps - time_steps) << endl;
 	delete sph;
 	exit(0);
 }
@@ -311,11 +311,11 @@ void keys (unsigned char key, int x, int y)
 			break;
 		case 'q':
 			sph->turnOffStim();
-			cout << "Turning simulation off" << endl;
+			// cout << "Turning simulation off" << endl;
 			break;
 		case 32:
 			simulate = !simulate;
-			cout << "Streaming: " << simulate << endl;
+			// cout << "Streaming: " << simulate << endl;
 			break;
 	}
 }
@@ -341,9 +341,9 @@ void initGL ()
 	version = glGetString(GL_VERSION); /* version as a string */
 	glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-	printf("Renderer: %s\n", renderer);
-	printf("OpenGL version supported %s\n", version);
-	printf("GLSL version supported %s\n", glslVersion);
+	// printf("Renderer: %s\n", renderer);
+	// printf("OpenGL version supported %s\n", version);
+	// printf("GLSL version supported %s\n", glslVersion);
 
 	glEnable(GL_DEPTH_TEST);
 
