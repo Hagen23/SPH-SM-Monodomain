@@ -487,7 +487,7 @@ void SPH_SM_monodomain::Compute_Density_SingPressure()
 		/// Testing if voltage can be used as a pressure
 		// if(isStimOn)
 			// m3Real inter_pressure_voltage = (p->Vm * voltage_constant);
-			p->pres += (p->Vm * voltage_constant);
+			p->pres -= (p->Vm * voltage_constant);
 
 			if(p->pres < -max_pressure)
 				p->pres = -max_pressure;

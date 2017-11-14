@@ -333,13 +333,13 @@ void reshape (int w, int h)
 
 void initGL ()
 {
-	const GLubyte* renderer;
-	const GLubyte* version;
-	const GLubyte* glslVersion;
+	// const GLubyte* renderer;
+	// const GLubyte* version;
+	// const GLubyte* glslVersion;
 
-	renderer = glGetString(GL_RENDERER); /* get renderer string */
-	version = glGetString(GL_VERSION); /* version as a string */
-	glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
+	// renderer = glGetString(GL_RENDERER); /* get renderer string */
+	// version = glGetString(GL_VERSION); /* version as a string */
+	// glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
 	// printf("Renderer: %s\n", renderer);
 	// printf("OpenGL version supported %s\n", version);
