@@ -69,7 +69,7 @@ float fps = 0;
 int total_fps_counts = 0;
 int currentTime = 0, previousTime = 0;
 
-const int max_time_steps = 1500;
+const int max_time_steps = 1000;
 int time_steps = max_time_steps;
 bool simulation_active = true;
 duration_d average_step_duration;
