@@ -89,9 +89,9 @@ class SPH_SM_monodomain
 		SPH_SM_monodomain();
 		~SPH_SM_monodomain();
 
-		m3Real voltage_constant = 50;
-		m3Real max_pressure = 150000;
-		m3Real max_voltage = 2000;
+		m3Real voltage_constant = 1;
+		m3Real max_pressure = 15000;
+		m3Real max_voltage = 200;
 
 		// Variables to meassure time spent in each step
 		tpoint t_start_find_neighbors, t_start_corrected_velocity, t_start_intermediate_velocity, t_start_Density_SingPressure, t_start_cell_model, t_start_compute_Force, t_start_Update_Properties;

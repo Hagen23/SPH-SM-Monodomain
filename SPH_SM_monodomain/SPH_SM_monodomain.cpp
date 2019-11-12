@@ -24,7 +24,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
     Beta = 50;
 	isStimOn = false;
 	sigma = sigma_i * sigma_e / ( sigma_i + sigma_e); //1.0f;
-	stim_strength = 30000.0f;
+	stim_strength = 300.0f;
 	
 	World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 
@@ -37,7 +37,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	Number_Cells = (int)Grid_Size.x * (int)Grid_Size.y * (int)Grid_Size.z;
 
 	Gravity.set(0.0f, -9.8f, 0.0f);
-	K = 0.8f;
+	K = 0.5f;
 	Stand_Density = 1112.0f;
 	max_vel = m3Vector(3.0f, 3.0f, 3.0f);
 	velocity_mixing = 1.0f;
@@ -66,7 +66,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 
 	quadraticMatch = false;
 	volumeConservation = true;
-	allowFlip = true;
+	allowFlip = false;
 
 	cout<<"SPHSystem"<<endl;
 	cout<<"Grid_Size_X : " << Grid_Size.x << endl;
@@ -488,12 +488,20 @@ void SPH_SM_monodomain::Compute_Density_SingPressure()
 		/// Testing if voltage can be used as a pressure
 		// if(isStimOn)
 			// m3Real inter_pressure_voltage = (p->Vm * voltage_constant);
-			p->pres -= (p->Vm * voltage_constant);
+		p->pres -= (p->Vm * voltage_constant);
 
+		if(p->stim > 0)
+		{
 			if(p->pres < -max_pressure)
 				p->pres = -max_pressure;
 			else if(p->pres > max_pressure)
 				p->pres = max_pressure;
+		}
+		else
+		{
+			p->pres = -0.0f;
+		}
+
 			// p->pres = p->pres < 0.0f? 0.0f : p->pres;
 
 		// if(p->pos.x > 0.5 && p->pos.y > 0.2 && p->pos.z > 0.5 )
@@ -748,7 +756,7 @@ void SPH_SM_monodomain::turnOnStim_Mesh(std::vector<m3Vector> positions)
 	for(int k = 0; k < Number_Particles; k++)
 	{
 		p = &Particles[k];
-		if ((p->pos.x >= 0.05 && p->pos.x <= 0.1) || (p->pos.x >= 0.94 && p->pos.y >= 0.75))
+		if ((p->pos.x >= 0.0 && p->pos.x <= 0.07) || (p->pos.x >= 0.90 && p->pos.y >= 0.80))
 			p->mFixed = true;
 	}
 }
@@ -760,17 +768,17 @@ void SPH_SM_monodomain::turnOffStim()
 	for(int k = 0; k < Number_Particles; k++)
 	{
 		p = &Particles[k];
-		p->stim = -1000.0f;
+		p->stim = -10000.0f;
 		p->Vm = 0.0f;
 		p->Inter_Vm = 0.0f;
 		p->Iion = 0.0f;
-		p->pres = 0.0f;
+		p->pres = -10000.0f;
 		p->w = 0.0f;
 
-		// if(p->stim > 0.0f)
-		// {
-		// 	p->stim = 0.0f;
-		// }
+		if(p->stim > 0.0f)
+		{
+			p->stim = 0.0f;
+		}
 	}
 }
 
@@ -796,7 +804,7 @@ void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 	tstart = std::chrono::system_clock::now();
 	calculate_intermediate_velocity();
 	d_intermediate_velocity += std::chrono::system_clock::now() - tstart;
-	
+
 	tstart = std::chrono::system_clock::now();
 	Compute_Density_SingPressure();
 	d_Density_SingPressure += std::chrono::system_clock::now() - tstart;
@@ -808,7 +816,6 @@ void SPH_SM_monodomain::compute_SPH_SM_monodomain()
 	tstart = std::chrono::system_clock::now();
 	Compute_Force();
 	d_compute_Force += std::chrono::system_clock::now() - tstart;
-
 	tstart = std::chrono::system_clock::now();
 	Update_Properties();
 	d_Update_Properties += std::chrono::system_clock::now() - tstart;

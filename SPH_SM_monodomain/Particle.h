@@ -27,6 +27,11 @@ public:
     m3Real    	Iion;			// Ionic current
     m3Real    	stim;   		// Stimulation
     m3Real   	w;      		// Recovery variable
+
+	m3Real getDisplacement()
+	{
+		return (mOriginalPos - pos).magnitude();
+	}
 };
 
 class Cell

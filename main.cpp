@@ -70,9 +70,9 @@ float fps = 0;
 int total_fps_counts = 0;
 int currentTime = 0, previousTime = 0;
 
-const int max_time_steps = 1000;
+const int max_time_steps = 500;
 int time_steps = max_time_steps;
-bool simulation_active = true;
+bool simulation_active = true, stimulated = true;
 duration_d average_step_duration;
 tpoint tstart;
 
@@ -196,52 +196,74 @@ void display_cube()
 	glPopAttrib();
 }
 
-// void display_points()
-// {
-// 	glPushMatrix();
-// 		Particle *p = sph->Get_Paticles();
-// 		glColor3f(0.2f, 0.5f, 1.0f);
-// 		glPointSize(2.0f);
-// 		glScalef(1.3, 1.3, 1.3);
-
-// 		glBegin(GL_POINTS);
-// 		for(int i=0; i<sph->Get_Particle_Number(); i++)
-// 		{
-// 			color Voltage_color = set_color(p[i].Vm, -200.0f, sph->max_voltage);
-// 			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
-// 			glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
-// 		}
-// 		glEnd();
-// 	glPopMatrix();
-// }
-
 void display_points()
 {
 	glPushMatrix();
 		Particle *p = sph->Get_Paticles();
-		
+		glColor3f(0.2f, 0.5f, 1.0f);
+		glPointSize(2.0f);
 		glScalef(1.3, 1.3, 1.3);
 
-		glBegin(GL_TRIANGLES);
-		for(int index=0; index<sph->Get_Particle_Number(); index++)
+		glBegin(GL_POINTS);
+		for(int i=0; i<sph->Get_Particle_Number(); i++)
 		{
-			// color Voltage_color = set_color(p[index].Vm, -200.0f, sph->max_voltage);
-			// float mat_color[] = {Voltage_color.r, Voltage_color.g, Voltage_color.b, 1.0f};
-			// glMaterialfv(GL_FRONT, GL_AMBIENT, mat_color);
-    		// glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
+			// color Voltage_color = set_color(p[i].Vm, -200.0f, sph->max_voltage);
+			if(stimulated)
+			{	
+				color displacementColor = set_color(p[i].getDisplacement(), -0.05f, 0.05f);
 
-			glNormal3f(normals[normalsIdx[index].x-1].x, normals[normalsIdx[index].x-1].y, normals[normalsIdx[index].x-1].z);
-			glVertex3f(p[(int)facesIdx[index].x-1].pos.x, p[(int)facesIdx[index].x-1].pos.y, p[(int)facesIdx[index].x-1].pos.z);
-
-			glNormal3f(normals[normalsIdx[index].y-1].x, normals[normalsIdx[index].y-1].y, normals[normalsIdx[index].y-1].z);
-			glVertex3f(p[(int)facesIdx[index].y-1].pos.x, p[(int)facesIdx[index].y-1].pos.y, p[(int)facesIdx[index].y-1].pos.z);
-			
-			glNormal3f(normals[normalsIdx[index].z-1].x, normals[normalsIdx[index].z-1].y, normals[normalsIdx[index].z-1].z);
-			glVertex3f(p[(int)facesIdx[index].z-1].pos.x, p[(int)facesIdx[index].z-1].pos.y, p[(int)facesIdx[index].z-1].pos.z); 
+				glColor3f(displacementColor.r, displacementColor.g, displacementColor.b);
+				// glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
+				glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
+			}
+			else
+			{
+				float ratio = 1.0f - 0.008f * (250-time_steps);
+				color displacementColor = set_color(p[i].getDisplacement()*ratio, -0.05f, 0.05f);
+				glColor3f(displacementColor.r, displacementColor.g, displacementColor.b);
+				// glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
+				glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
+			}
 		}
 		glEnd();
 	glPopMatrix();
 }
+
+// void display_points()
+// {
+// 	glPushMatrix();
+// 		Particle *p = sph->Get_Paticles();
+		
+// 		glScalef(1.3, 1.3, 1.3);
+
+// 		glBegin(GL_TRIANGLES);
+// 		for(int index=0; index<sph->Get_Particle_Number(); index++)
+// 		{
+// 			// color Voltage_color = set_color(p[index].Vm, -200.0f, sph->max_voltage);
+// 			// float mat_color[] = {Voltage_color.r, Voltage_color.g, Voltage_color.b, 1.0f};
+// 			// glMaterialfv(GL_FRONT, GL_AMBIENT, mat_color);
+//     		// glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
+
+// 			// color displacementColor = set_color(p[index].getDisplacement(), -0.1f, 0.1f);
+
+// 			// float ambientDisplacement   [] = {displacementColor.r * 0.25f, displacementColor.g * 0.25f, displacementColor.b * 0.25f, 1.00};
+// 			// float diffuseDisplacement   [] = {displacementColor.r * 0.75f, displacementColor.g * 0.75f, displacementColor.b  *0.75f, 1.00};
+			
+// 			// glMaterialfv(GL_FRONT, GL_AMBIENT, ambientDisplacement);
+// 			// glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseDisplacement);
+
+// 			glNormal3f(normals[normalsIdx[index].x-1].x, normals[normalsIdx[index].x-1].y, normals[normalsIdx[index].x-1].z);
+// 			glVertex3f(p[(int)facesIdx[index].x-1].pos.x, p[(int)facesIdx[index].x-1].pos.y, p[(int)facesIdx[index].x-1].pos.z);
+
+// 			glNormal3f(normals[normalsIdx[index].y-1].x, normals[normalsIdx[index].y-1].y, normals[normalsIdx[index].y-1].z);
+// 			glVertex3f(p[(int)facesIdx[index].y-1].pos.x, p[(int)facesIdx[index].y-1].pos.y, p[(int)facesIdx[index].y-1].pos.z);
+			
+// 			glNormal3f(normals[normalsIdx[index].z-1].x, normals[normalsIdx[index].z-1].y, normals[normalsIdx[index].z-1].z);
+// 			glVertex3f(p[(int)facesIdx[index].z-1].pos.x, p[(int)facesIdx[index].z-1].pos.y, p[(int)facesIdx[index].z-1].pos.z); 
+// 		}
+// 		glEnd();
+// 	glPopMatrix();
+// }
 
 void display (void)
 {
@@ -304,10 +326,11 @@ void idle(void)
 		tstart = std::chrono::system_clock::now();
 		// cout << "Time Step: " << max_time_steps - time_steps << endl;
 
-		if(time_steps == max_time_steps - max_time_steps / 2)
+		if(time_steps == max_time_steps / 2)
 		{
 			sph->turnOffStim();
-			// cout << "Turning stimulation off" << endl;
+			stimulated = false;
+			cout << "Turning stimulation off" << endl;
 		}
 
 		if(simulate)
@@ -413,28 +436,28 @@ void initGL ()
     float propertiesDiffuse [] = {0.75, 0.75, 0.75, 1.00};
     float propertiesSpecular[] = {0.00, 1.00, 1.00, 1.00};
 
-	glClearColor(0.3f, 0.3f, 0.3f, 0.0f);
-	glShadeModel(GL_SMOOTH);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_LIGHTING);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+	// glShadeModel(GL_SMOOTH);
+	// glEnable(GL_DEPTH_TEST);
+	// glEnable(GL_LIGHTING);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	glLightfv(GL_LIGHT0, GL_AMBIENT, propertiesAmbient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, propertiesDiffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, propertiesSpecular);
-    glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 1.0);
+	// glLightfv(GL_LIGHT0, GL_AMBIENT, propertiesAmbient);
+    // glLightfv(GL_LIGHT0, GL_DIFFUSE, propertiesDiffuse);
+    // glLightfv(GL_LIGHT0, GL_SPECULAR, propertiesSpecular);
+    // glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 1.0);
 
-    glEnable(GL_LIGHT0);
+    // glEnable(GL_LIGHT0);
 
-    glMaterialfv(GL_BACK,  GL_AMBIENT, ambientGreen);
-    glMaterialfv(GL_BACK,  GL_DIFFUSE, diffuseGreen);  
+    // glMaterialfv(GL_BACK,  GL_AMBIENT, ambientGreen);
+    // glMaterialfv(GL_BACK,  GL_DIFFUSE, diffuseGreen);  
 	
-	glMaterialfv(GL_FRONT, GL_AMBIENT, ambientRed);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
+	// glMaterialfv(GL_FRONT, GL_AMBIENT, ambientRed);
+    // glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
 
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specularWhite);
+    // glMaterialfv(GL_FRONT, GL_SPECULAR, specularWhite);
 
-    glMaterialf(GL_FRONT, GL_SHININESS, 300.0);
+    // glMaterialf(GL_FRONT, GL_SHININESS, 300.0);
 	// gluLookAt(-0.75, -0.75f, translate_z,-0.75f, -0.75f, -0.75, 0, 1, 0);
 }
 
