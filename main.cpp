@@ -14,6 +14,7 @@ A cube of tissue simulated by SPH and SM is activated by the monodomain equation
 #include <ctime>
 #include <iostream>
 #include <stdio.h>
+#include <vector>
 
 #include <SPH_SM_monodomain.h>
 
@@ -69,11 +70,22 @@ float fps = 0;
 int total_fps_counts = 0;
 int currentTime = 0, previousTime = 0;
 
-const int max_time_steps = 1500;
+const int max_time_steps = 800;
 int time_steps = max_time_steps;
 bool simulation_active = true;
 duration_d average_step_duration;
 tpoint tstart;
+
+// Material definition
+static const float ambientGreen [] = {0.00, 0.25, 0.00, 1.00};
+static const float ambientBlue  [] = {0.00, 0.00, 0.25, 1.00};
+static const float ambientRed   [] = {0.25, 0.00, 0.0, 1.00};
+static const float diffuseGreen [] = {0.00, 0.75, 0.00, 1.00};
+static const float diffuseBlue  [] = {0.00, 0.00, 0.75, 1.00};
+static const float diffuseRed   [] = {0.75, 0.00, 0.00, 1.00};
+static const float specularWhite[] = {0.8, 0.4, 0.8, 1.00};
+
+vector<m3Vector>	facesIdx, normalsIdx, normals;
 
 void exit_simulation();
 
@@ -130,11 +142,11 @@ color set_color(float value, float min, float max)
 	return return_color;
 }
 
-void readCloudFromFile(const char* filename, vector<m3Vector>* points)
+void readCloudFromFile(const char* filename, vector<m3Vector>* points, int freq = 0)
 {
 	FILE *ifp;
 	float x, y, z;
-	int aux = 0;
+	int aux = 0, muscle_data = 0, counter = 0;
 
 	if ((ifp = fopen(filename, "r")) == NULL)
 	{
@@ -142,41 +154,90 @@ void readCloudFromFile(const char* filename, vector<m3Vector>* points)
 		return;
 	}
 
+	if( strcmp(filename, "Resources/biceps_simple_out_18475.csv") == 0)
+		muscle_data = 1;
+
 	while ((aux = fscanf(ifp, "%f,%f,%f\n", &x, &y, &z)) != EOF)
 	{
-		if (aux == 3)
+		if (aux == 3 && muscle_data == 0)
 			points->push_back(m3Vector(x,y,z));
+		
+		if(aux ==3 && muscle_data == 1)
+		{
+			if(counter < 3000)
+				points->push_back(m3Vector(x,y,z));
+			else
+			{
+				if(counter % freq == 0)
+				{
+					points->push_back(m3Vector(x,y,z));
+				}
+			}
+		}
+		counter ++;
 	}
 }
 
 void display_cube()
-{
-	glPushMatrix();
-		glColor3f(1.0, 1.0, 1.0);
-		glLineWidth(2.0);
-		for(int i = 0; i< 6; i++)
-		{
-			glBegin(GL_LINE_LOOP);
-			for(int j = 0; j < 4; j++)
-				glVertex3f(cubeFaces[i*4+j][0], cubeFaces[i*4+j][1], cubeFaces[i*4+j][2]);
-			glEnd();
-		}
-	glPopMatrix();
+{	
+	glPushAttrib(GL_LIGHTING_BIT);
+        glDisable(GL_LIGHTING);
+		glPushMatrix();
+			glColor3f(1.0, 1.0, 1.0);
+			glLineWidth(2.0);
+			for(int i = 0; i< 6; i++)
+			{
+				glBegin(GL_LINE_LOOP);
+				for(int j = 0; j < 4; j++)
+					glVertex3f(cubeFaces[i*4+j][0], cubeFaces[i*4+j][1], cubeFaces[i*4+j][2]);
+				glEnd();
+			}
+		glPopMatrix();
+	glPopAttrib();
 }
+
+// void display_points()
+// {
+// 	glPushMatrix();
+// 		Particle *p = sph->Get_Paticles();
+// 		glColor3f(0.2f, 0.5f, 1.0f);
+// 		glPointSize(2.0f);
+// 		glScalef(1.3, 1.3, 1.3);
+
+// 		glBegin(GL_POINTS);
+// 		for(int i=0; i<sph->Get_Particle_Number(); i++)
+// 		{
+// 			color Voltage_color = set_color(p[i].Vm, -200.0f, sph->max_voltage);
+// 			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
+// 			glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
+// 		}
+// 		glEnd();
+// 	glPopMatrix();
+// }
 
 void display_points()
 {
 	glPushMatrix();
 		Particle *p = sph->Get_Paticles();
-		glColor3f(0.2f, 0.5f, 1.0f);
-		glPointSize(2.0f);
+		
+		glScalef(1.3, 1.3, 1.3);
 
-		glBegin(GL_POINTS);
-		for(int i=0; i<sph->Get_Particle_Number(); i++)
+		glBegin(GL_TRIANGLES);
+		for(int index=0; index<sph->Get_Particle_Number(); index++)
 		{
-			color Voltage_color = set_color(p[i].Vm, -200.0f, sph->max_voltage);
-			glColor3f(Voltage_color.r, Voltage_color.g, Voltage_color.b);
-			glVertex3f(p[i].pos.x, p[i].pos.y, p[i].pos.z);
+			// color Voltage_color = set_color(p[index].Vm, -200.0f, sph->max_voltage);
+			// float mat_color[] = {Voltage_color.r, Voltage_color.g, Voltage_color.b, 1.0f};
+			// glMaterialfv(GL_FRONT, GL_AMBIENT, mat_color);
+    		// glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
+
+			glNormal3f(normals[normalsIdx[index].x-1].x, normals[normalsIdx[index].x-1].y, normals[normalsIdx[index].x-1].z);
+			glVertex3f(p[(int)facesIdx[index].x-1].pos.x, p[(int)facesIdx[index].x-1].pos.y, p[(int)facesIdx[index].x-1].pos.z);
+
+			glNormal3f(normals[normalsIdx[index].y-1].x, normals[normalsIdx[index].y-1].y, normals[normalsIdx[index].y-1].z);
+			glVertex3f(p[(int)facesIdx[index].y-1].pos.x, p[(int)facesIdx[index].y-1].pos.y, p[(int)facesIdx[index].y-1].pos.z);
+			
+			glNormal3f(normals[normalsIdx[index].z-1].x, normals[normalsIdx[index].z-1].y, normals[normalsIdx[index].z-1].z);
+			glVertex3f(p[(int)facesIdx[index].z-1].pos.x, p[(int)facesIdx[index].z-1].pos.y, p[(int)facesIdx[index].z-1].pos.z); 
 		}
 		glEnd();
 	glPopMatrix();
@@ -196,34 +257,37 @@ void display (void)
 		glRotatef(rotate_y, 0.0, 1.0, 0.0);
 		glTranslatef(-0.75, -0.75, -0.75f);
 
-		glPushMatrix();
-			glLineWidth(5.0);
-			glBegin(GL_LINES);
-			glColor3f(0, 0, 1);
-			glVertex3f(0, 0, 0);
-			glVertex3f(1, 0, 0);
+		glPushAttrib(GL_LIGHTING_BIT);
+			glDisable(GL_LIGHTING);
+			glPushMatrix();
+				glLineWidth(5.0);
+				glBegin(GL_LINES);
+				glColor3f(0, 0, 1);
+				glVertex3f(0, 0, 0);
+				glVertex3f(1, 0, 0);
 
-			glColor3f(1, 0, 0);
-			glVertex3f(0, 0, 0);
-			glVertex3f(0, 1, 0);
+				glColor3f(1, 0, 0);
+				glVertex3f(0, 0, 0);
+				glVertex3f(0, 1, 0);
 
-			glColor3f(0, 1, 0);
-			glVertex3f(0, 0, 0);
-			glVertex3f(0, 0, 1);
-			glEnd();
-		glPopMatrix();
+				glColor3f(0, 1, 0);
+				glVertex3f(0, 0, 0);
+				glVertex3f(0, 0, 1);
+				glEnd();
+			glPopMatrix();
+		glPopAttrib();
 
 		display_cube();
 		display_points();
 
-		glPushMatrix();
-			glColor3f(1.f, 1.f, 0.f);
-			glPointSize(10.0f);
+		// glPushMatrix();
+		// 	glColor3f(1.f, 1.f, 0.f);
+		// 	glPointSize(10.0f);
 
-			glBegin(GL_POINTS);
-				glVertex3f(0.75, 0.75, 0.75);
-			glEnd();
-		glPopMatrix();
+		// 	glBegin(GL_POINTS);
+		// 		glVertex3f(0.75, 0.75, 0.75);
+		// 	glEnd();
+		// glPopMatrix();
 	glPopMatrix();
 	
 	glutSwapBuffers();
@@ -345,8 +409,32 @@ void initGL ()
 	// printf("OpenGL version supported %s\n", version);
 	// printf("GLSL version supported %s\n", glslVersion);
 
-	glEnable(GL_DEPTH_TEST);
+	float propertiesAmbient [] = {1.0, 1.0, 1.0, 0.00};
+    float propertiesDiffuse [] = {0.75, 0.75, 0.75, 1.00};
+    float propertiesSpecular[] = {0.00, 1.00, 1.00, 1.00};
 
+	glClearColor(0.3f, 0.3f, 0.3f, 0.0f);
+	glShadeModel(GL_SMOOTH);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT, propertiesAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, propertiesDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, propertiesSpecular);
+    glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 1.0);
+
+    glEnable(GL_LIGHT0);
+
+    glMaterialfv(GL_BACK,  GL_AMBIENT, ambientGreen);
+    glMaterialfv(GL_BACK,  GL_DIFFUSE, diffuseGreen);  
+	
+	glMaterialfv(GL_FRONT, GL_AMBIENT, ambientRed);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseRed);
+
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specularWhite);
+
+    glMaterialf(GL_FRONT, GL_SHININESS, 300.0);
 	// gluLookAt(-0.75, -0.75f, translate_z,-0.75f, -0.75f, -0.75, 0, 1, 0);
 }
 
@@ -356,9 +444,9 @@ void init_cube()
 	m3Vector World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 	float kernel = 0.04f;
 
-	for(float k = World_Size.z * 0.3f; k < World_Size.z * 0.7f; k += kernel * 0.8)
-	for(float j = World_Size.y * 0.0f; j < World_Size.y * 0.4f; j += kernel * 0.8)
-	for(float i = World_Size.x * 0.3f; i < World_Size.x * 0.7f; i += kernel * 0.8)
+	for(float k = World_Size.z * 0.3f; k < World_Size.z * 0.7f; k += kernel * 0.9)
+	for(float j = World_Size.y * 0.0f; j < World_Size.y * 0.4f; j += kernel * 0.9)
+	for(float i = World_Size.x * 0.3f; i < World_Size.x * 0.7f; i += kernel * 0.9)
 		positions.push_back(m3Vector(i, j, k));
 
 	sph->Init_Fluid(positions);
@@ -368,7 +456,10 @@ void init_cube()
 void init_mesh(const char * filename)
 {
 	std::vector<m3Vector> positions;
-	readCloudFromFile(filename, &positions);
+	readCloudFromFile(filename, &positions, 7);
+	readCloudFromFile("Resources/faces.csv", &facesIdx);
+	readCloudFromFile("Resources/normals.txt", &normals);
+	readCloudFromFile("Resources/normals_index.csv", &normalsIdx);
 	sph->Init_Fluid(positions);
 	sph->turnOnStim_Mesh(positions);
 }
@@ -377,7 +468,8 @@ void init(void)
 {
 	sph = new SPH_SM_monodomain();
 	// init_cube();
-	init_mesh("Resources/biceps_simple_out.csv");
+	// init_mesh("Resources/biceps_simple_out_4944.csv");
+	init_mesh("Resources/biceps_simple_out_18475.csv");
 }
 
 int main( int argc, const char **argv ) {

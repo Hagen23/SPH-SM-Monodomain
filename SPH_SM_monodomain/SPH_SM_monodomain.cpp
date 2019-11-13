@@ -24,11 +24,11 @@ SPH_SM_monodomain::SPH_SM_monodomain()
     Beta = 50;
 	isStimOn = false;
 	sigma = sigma_i * sigma_e / ( sigma_i + sigma_e); //1.0f;
-	stim_strength = 800000.0f;
+	stim_strength = 30000.0f;
 	
 	World_Size = m3Vector(1.5f, 1.5f, 1.5f);
 
-	Cell_Size = 0.08;
+	Cell_Size = 0.04;
 	Grid_Size = World_Size / Cell_Size;
 	Grid_Size.x = (int)ceil(Grid_Size.x);
 	Grid_Size.y = (int)ceil(Grid_Size.y);
@@ -45,7 +45,7 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	/// Time step is calculated as in 2016 - Divergence-Free SPH for Incompressible and Viscous Fluids.
 	/// Then we adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition [6] ∆t ≤ 0.4 * d / (||vmax||)
 	Time_Delta = 0.4 * kernel / sqrt(max_vel.magnitudeSquared());
-	Wall_Hit = -0.05f;
+	Wall_Hit = -1.0f; //0.05f;
 	mu = 100.0f;
 
 	Particles = new Particle[Max_Number_Paticles];
@@ -60,21 +60,22 @@ SPH_SM_monodomain::SPH_SM_monodomain()
 	bounds.min.zero();
 	bounds.max.set(1.5f, 1.5f, 1.5f);
 
-	alpha = 0.5f;
-	beta = 0.2f;
+	// Beta has to be larger than alfa
+	alpha = 0.3f;
+	beta = 0.4f;
 
 	quadraticMatch = false;
 	volumeConservation = true;
 	allowFlip = true;
 
-	// cout<<"SPHSystem"<<endl;
-	// cout<<"Grid_Size_X : " << Grid_Size.x << endl;
-	// cout<<"Grid_Size_Y : " << Grid_Size.y << endl;
-	// cout<<"Grid_Size_Z : " << Grid_Size.y << endl;
-	// cout<<"Alpha :" << alpha << " Beta :" << beta << endl;
-	// cout<<"Volume conservation :" << volumeConservation << " Quadratic match : "<<quadraticMatch << endl;
-	// cout<<"Cell Number : "<<Number_Cells<<endl;
-	// cout<<"Time Delta : "<<Time_Delta<<endl;
+	cout<<"SPHSystem"<<endl;
+	cout<<"Grid_Size_X : " << Grid_Size.x << endl;
+	cout<<"Grid_Size_Y : " << Grid_Size.y << endl;
+	cout<<"Grid_Size_Z : " << Grid_Size.y << endl;
+	cout<<"Alpha :" << alpha << " Beta :" << beta << endl;
+	cout<<"Volume conservation :" << volumeConservation << " Quadratic match : "<<quadraticMatch << endl;
+	cout<<"Cell Number : "<<Number_Cells<<endl;
+	cout<<"Time Delta : "<<Time_Delta<<endl;
 }
 
 SPH_SM_monodomain::~SPH_SM_monodomain()
@@ -94,7 +95,7 @@ void SPH_SM_monodomain::Init_Fluid(vector<m3Vector> positions)
 	for(m3Vector pos : positions)
 		Init_Particle(pos, m3Vector(0.f, 0.f, 0.f));
 
-	// cout<<"Number of Paticles : "<<Number_Particles<<endl;
+	cout<<"Number of Paticles : "<<Number_Particles<<endl;
 }
 
 void SPH_SM_monodomain::Init_Particle(m3Vector pos, m3Vector vel)
@@ -559,7 +560,7 @@ void SPH_SM_monodomain::Compute_Force()
 		p->acc = p->acc/p->dens;
 
 		/// Adding the currents, and time integration for the intermediate voltage
-		p->Inter_Vm += (sigma / (Beta * Cm)) * p->Vm - ((p->Iion - p->stim * Time_Delta / p->mass) / Cm);
+		p->Inter_Vm += (sigma / (Beta * Cm)) * p->Inter_Vm - ((p->Iion - p->stim * Time_Delta / p->mass) / Cm);
 	}
 }
 
@@ -740,13 +741,14 @@ void SPH_SM_monodomain::turnOnStim_Mesh(std::vector<m3Vector> positions)
 
 	for(m3Vector pos : positions)
 	{
-		if( (pos.x >= 0.3 && pos.x <= 0.36) || (pos.x >= 0.5 && pos.x <= 0.56) || (pos.x > 1.26 && pos.x <= 1.29f) )
-			set_stim(pos, 0.001f, stim_strength);
+		// if( (pos.x >= 0.3 && pos.x <= 0.5) || (pos.x > 1.1f && pos.x <= 1.29f) )
+		set_stim(pos, 0.01f, stim_strength);
 	}
+
 	for(int k = 0; k < Number_Particles; k++)
 	{
 		p = &Particles[k];
-		if ((p->pos.x >= 0.3 && p->pos.x <= 0.36) || (p->pos.x >= 1.27 && p->pos.x <= 1.29f))
+		if ((p->pos.x >= 0.05 && p->pos.x <= 0.1) || (p->pos.x >= 0.94 && p->pos.y >= 0.75))
 			p->mFixed = true;
 	}
 }
@@ -758,10 +760,17 @@ void SPH_SM_monodomain::turnOffStim()
 	for(int k = 0; k < Number_Particles; k++)
 	{
 		p = &Particles[k];
-		if(p->stim > 0.0f)
-		{
-			p->stim = 0.0f;
-		}
+		p->stim = -1000.0f;
+		p->Vm = 0.0f;
+		p->Inter_Vm = 0.0f;
+		p->Iion = 0.0f;
+		p->pres = 0.0f;
+		p->w = 0.0f;
+
+		// if(p->stim > 0.0f)
+		// {
+		// 	p->stim = 0.0f;
+		// }
 	}
 }
 
